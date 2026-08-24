@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kingdom Vending POS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121620; color: #e1e6f0; padding: 20px; }
+
+        header { text-align: center; margin-bottom: 25px; }
+        header h1 { color: #4caf50; font-size: 28px; margin-bottom: 10px; }
+
+        /* Pestañas */
+        .nav-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        .tab-btn { background: #232a3b; color: #a0aec0; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.3s; position: relative; }
+        .tab-btn.active { background: #2e7d32; color: #ffffff; }
+        .tab-btn.locked { opacity: 0.5; cursor: not-allowed; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Tarjetas */
+        .card-panel { background: #1a202c; border: 1px solid #2d3748; padding: 25px; border-radius: 10px; max-width: 500px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #cbd5e0; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #2d3748; border: 1px solid #4a5568; color: #fff; border-radius: 5px; font-size: 14px; }
+        
+        .btn-primary { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.2s; }
+        .btn-primary:hover { background: #388e3c; }
+
+        /* Caja de Pago Nequi para Licencia */
+        .nequi-licencia-box { background: #1d2636; border: 2px dashed #e53e3e; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .nequi-number { color: #4caf50; font-size: 22px; font-weight: bold; letter-spacing: 1px; margin: 5px 0; }
+
+        /* POS / Mesas */
+        .zonas-bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-zona { background: #2d3748; color: white; border: 1px solid #4a5568; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-zona.active { background: #2e7d32; border-color: #4caf50; }
+
+        .pos-container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .grid-mesas { flex: 2; min-width: 300px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; align-content: start; }
+        
+        .card-mesa { background: #1a202c; border: 2px solid #2e7d32; padding: 20px 10px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+        .card-mesa.ocupada { border-color: #e53e3e; background: #2c1919; }
+        .card-mesa.seleccionada { box-shadow: 0 0 10px #4caf50; }
+
+        .btn-delete-mesa { position: absolute; top: 6px; right: 6px; background: transparent; border: none; color: #e53e3e; cursor: pointer; font-size: 15px; padding: 2px 5px; border-radius: 4px; transition: 0.2s; }
+        .btn-delete-mesa:hover { background: #e53e3e22; transform: scale(1.1); }
+
+        .card-add-mesa { background: #232a3b; border: 2px dashed #4a5568; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; color: #a0aec0; }
+        .card-add-mesa:hover { border-color: #4caf50; color: #4caf50; }
+
+        .panel-detalle { flex: 1; min-width: 320px; background: #1a202c; border: 1px solid #2d3748; padding: 20px; border-radius: 8px; height: fit-content; }
+        .item-producto { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; border-bottom: 1px solid #2d3748; padding-bottom: 8px; }
+        .actions-item button { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+
+        /* Modales */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #1a202c; border: 1px solid #2d3748; padding: 25px; border-radius: 10px; width: 90%; max-width: 420px; }
+
+        /* Badges */
+        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+        .badge-logged { background: #2e7d32; color: white; }
+        .badge-off { background: #e53e3e; color: white; }
+
+        .catalog-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .catalog-table th, .catalog-table td { border: 1px solid #2d3748; padding: 10px; text-align: left; }
+    </style>
+
+    <!-- LIBRERÍAS DE FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1>Kingdom Vending POS</h1>
+        <div id="user-status"><span class="status-badge badge-off" id="badge-texto">🔒 Licencia No Activa (Sin Acceso)</span></div>
+    </header>
+
+    <!-- Menú de Pestañas -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" id="btn-tab-usuario" onclick="switchTab(event, 'tab-usuario')">👤 Registro y Licencia</button>
+        <button class="tab-btn locked" id="btn-tab-pos" onclick="intentarAcceso(event, 'tab-pos')">🍽️ Mesas y Comandas 🔒</button>
+        <button class="tab-btn locked" id="btn-tab-catalogo" onclick="intentarAcceso(event, 'tab-catalogo')">📦 Catálogo de Productos 🔒</button>
+    </div>
+
+    <!-- PESTAÑA 1: REGISTRO, PAGO DE LICENCIA Y LOGIN -->
+    <div id="tab-usuario" class="tab-content active">
+        <div class="card-panel">
+            <h2 style="margin-bottom: 15px; text-align: center;" id="form-title">Registro de Nuevo Establecimiento</h2>
+            
+            <div class="nequi-licencia-box" id="nequi-subscription-box">
+                <p style="font-size: 13px; color: #cbd5e0;">Para activar tu licencia del software, realiza la transferencia a:</p>
+                <div class="nequi-number">Nequi: 3218353006</div>
+                <small style="color: #a0aec0;" id="monto-texto">Monto: $10.000 COP / mes</small>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <div class="form-group" id="group-negocio">
+                    <label>Nombre del Negocio / Establecimiento:</label>
+                    <input type="text" id="nombreNegocio" placeholder="Ej: Cafetería El Roble" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Correo Electrónico:</label>
+                    <input type="email" id="email" placeholder="cliente@ejemplo.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Contraseña de Acceso:</label>
+                    <input type="password" id="password" required>
+                </div>
+
+                <div class="form-group" id="group-plan">
+                    <label>Plan de Suscripción:</label>
+                    <select id="tipoSuscripcion" onchange="actualizarMontoSuscripcion()">
+                        <option value="MENSUAL">Mensual - $10.000 COP / mes</option>
+                        <option value="ANUAL">Anual - $100.000 COP / año (Ahorras 2 meses)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="group-comprobante">
+                    <label>Número de Referencia / Nequi de Transferencia:</label>
+                    <input type="text" id="referenciaPago" placeholder="Ej: M123456 o Número celular" required>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btn-submit">Registrarse y Activar Licencia</button>
+            </form>
+
+            <div style="margin-top: 15px; text-align: center; font-size: 14px;">
+                <a href="#" onclick="toggleMode()" id="toggle-link" style="color: #4caf50;">¿Ya pagaste tu suscripción? Inicia sesión aquí</a>
+                <br>
+                <!-- BOTÓN OLVIDÉ MI CONTRASEÑA (SOLO VISIBLE EN MODO INICIAR SESIÓN) -->
+                <a href="#" onclick="recuperarClave()" id="link-recuperar" style="color: #ff9800; display: none; margin-top: 10px; font-size: 13px;">¿Olvidaste tu contraseña?</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: POS -->
+    <div id="tab-pos" class="tab-content">
+        <div class="zonas-bar" id="contenedor-zonas">
+            <button class="btn-zona active" onclick="cambiarZona(event, 'ZONA DE BAR')">ZONA DE BAR</button>
+            <button class="btn-zona" onclick="cambiarZona(event, 'ZONA DE ONCES')">ZONA DE ONCES</button>
+            <button class="btn-zona" onclick="cambiarZona(event, 'CALLE')">CALLE</button>
+        </div>
+
+        <div class="pos-container">
+            <div class="grid-mesas" id="grid-mesas-container"></div>
+
+            <div class="panel-detalle">
+                <h3>Detalle: <span id="nombre-mesa-activa" style="color: #4caf50;">Ninguna</span></h3>
+                <hr style="margin: 10px 0; border-color: #2d3748;">
+                
+                <div id="lista-productos-mesa"></div>
+
+                <hr style="margin: 10px 0; border-color: #2d3748;">
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Agregar Producto a la Mesa:</label>
+                    <div style="display: flex; gap: 5px;">
+                        <select id="select-producto-catalogo"></select>
+                        <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="agregarProductoAMesa()">+</button>
+                    </div>
+                </div>
+
+                <h2 style="margin-top: 15px; text-align: right;">Total: $<span id="total-precio-mesa">0</span> COP</h2>
+                <button class="btn-primary" style="background: #d97706; margin-top: 15px;" onclick="abrirModalPago()">💳 Cobrar / Cerrar Mesa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 3: CATÁLOGO -->
+    <div id="tab-catalogo" class="tab-content">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div class="card-panel" style="flex: 1; min-width: 280px; margin: 0;">
+                <h3 style="margin-bottom: 15px;">Nuevo Producto</h3>
+                <form onsubmit="guardarNuevoProducto(event)">
+                    <div class="form-group">
+                        <label>Nombre del Producto:</label>
+                        <input type="text" id="prod-nombre" placeholder="Ej: Capuchino Especial" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría:</label>
+                        <select id="prod-categoria">
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Amasijos">Amasijos</option>
+                            <option value="Licores">Licores</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Unitario (COP):</label>
+                        <input type="number" id="prod-precio" placeholder="5000" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Guardar Producto</button>
+                </form>
+            </div>
+
+            <div style="flex: 2; min-width: 320px; background: #1a202c; padding: 20px; border-radius: 8px; border: 1px solid #2d3748;">
+                <h3>Lista de Productos</h3>
+                <table class="catalog-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-catalogo-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PAGO E IMPRESIÓN DE TICKET -->
+    <div class="modal-overlay" id="modal-pago">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px; text-align: center;">Cobrar - <span id="modal-mesa-nombre">Mesa</span></h3>
+            <p style="font-size: 18px; text-align: center; font-weight: bold; margin-bottom: 15px; color: #4caf50;">Total a cobrar: $<span id="modal-total-cobrar">0</span> COP</p>
+
+            <div class="form-group">
+                <label>Método de Pago del Cliente:</label>
+                <select id="metodo-pago-select" onchange="actualizarInfoMetodoPago()">
+                    <option value="EFECTIVO">💵 Efectivo</option>
+                    <option value="NEQUI">📱 Nequi del Negocio</option>
+                    <option value="TARJETA">💳 Datáfono / Tarjeta</option>
+                </select>
+            </div>
+
+            <div id="info-nequi-box" style="display: none; background: #232a3b; border: 1px solid #3182ce; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 15px;">
+                <p style="font-size: 13px; color: #cbd5e0;">Muestra el QR o Nequi de tu local al cliente.</p>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                <button class="btn-primary" style="background: #2563eb;" onclick="confirmarPago(true)">🖨️ Cobrar e Imprimir Ticket</button>
+                <button class="btn-primary" onclick="confirmarPago(false)">💵 Solo Cobrar y Liberar</button>
+                <button class="btn-primary" style="background: #e53e3e;" onclick="cerrarModalPago()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0oyye96Iw39bYd_PuNjpssA0uEmlv4xs",
+            authDomain: "kingdom-vending-pos.firebaseapp.com",
+            projectId: "kingdom-vending-pos",
+            storageBucket: "kingdom-vending-pos.firebasestorage.app",
+            messagingSenderId: "730386658123",
+            appId: "1:730386658123:web:25911dced1647f261beece",
+            measurementId: "G-XQ3X88R6B2"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let licenciaActiva = false;
+        let isRegistering = true;
+        let negocioNombreActual = "Kingdom Vending POS";
+
+        let zonaActual = "ZONA DE BAR";
+        let mesaSeleccionada = "";
+
+        // ESTRUCTURAS DE DATOS VACÍAS POR DEFECTO
+        let mesasPorZona = {
+            "ZONA DE BAR": [],
+            "ZONA DE ONCES": [],
+            "CALLE": []
+        };
+        let catalogo = [];
+        let consumosMesas = {};
+
+        // PERSISTENCIA EN FIRESTORE VINCULADA AL UID DEL USUARIO
+        async function guardarEnFirestore() {
+            const user = auth.currentUser;
+            if (!user) return;
+            try {
+                await db.collection("usuarios").doc(user.uid).collection("pos").doc("datos").set({
+                    mesasPorZona: mesasPorZona,
+                    consumosMesas: consumosMesas,
+                    catalogo: catalogo
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error al guardar datos en la nube:", e);
+            }
+        }
+
+        async function cargarDesdeFirestore(uid) {
+            try {
+                const docSnap = await db.collection("usuarios").doc(uid).collection("pos").doc("datos").get();
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    mesasPorZona = data.mesasPorZona || { "ZONA DE BAR": [], "ZONA DE ONCES": [], "CALLE": [] };
+                    consumosMesas = data.consumosMesas || {};
+                    catalogo = data.catalogo || [];
+                } else {
+                    mesasPorZona = { "ZONA DE BAR": [], "ZONA DE ONCES": [], "CALLE": [] };
+                    consumosMesas = {};
+                    catalogo = [];
+                }
+
+                const mesasExistentes = mesasPorZona[zonaActual] || [];
+                mesaSeleccionada = mesasExistentes.length > 0 ? mesasExistentes[0] : "";
+
+                renderCatalogo();
+                renderMesas();
+                renderMesaDetalle();
+            } catch (e) {
+                console.error("Error al cargar datos desde Firestore:", e);
+            }
+        }
+
+        // PESTAÑAS Y ACCESO
+        function intentarAcceso(e, tabId) {
+            if (!licenciaActiva) {
+                alert("⚠️ ACCESO DENEGADO\n\nDebes registrarte e ingresar tu comprobante de pago Nequi al 3218353006 para activar el software.");
+                switchTab(null, 'tab-usuario');
+            } else {
+                switchTab(e, tabId);
+            }
+        }
+
+        function switchTab(e, tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            
+            if (tabId === 'tab-usuario') document.getElementById('btn-tab-usuario').classList.add('active');
+            if (tabId === 'tab-pos') document.getElementById('btn-tab-pos').classList.add('active');
+            if (tabId === 'tab-catalogo') document.getElementById('btn-tab-catalogo').classList.add('active');
+        }
+
+        function actualizarMontoSuscripcion() {
+            const plan = document.getElementById('tipoSuscripcion').value;
+            document.getElementById('monto-texto').innerText = plan === "ANUAL" ? "Monto: $100.000 COP / año" : "Monto: $10.000 COP / mes";
+        }
+
+        function toggleMode() {
+            isRegistering = !isRegistering;
+            document.getElementById('form-title').innerText = isRegistering ? "Registro de Nuevo Establecimiento" : "Iniciar Sesión";
+            document.getElementById('nequi-subscription-box').style.display = isRegistering ? "block" : "none";
+            document.getElementById('group-plan').style.display = isRegistering ? "block" : "none";
+            document.getElementById('group-comprobante').style.display = isRegistering ? "block" : "none";
+            document.getElementById('group-negocio').style.display = isRegistering ? "block" : "none";
+
+            // Mostrar "Olvidaste tu contraseña" únicamente en Modo Iniciar Sesión
+            document.getElementById('link-recuperar').style.display = isRegistering ? "none" : "inline-block";
+
+            document.getElementById('nombreNegocio').required = isRegistering;
+            document.getElementById('referenciaPago').required = isRegistering;
+
+            document.getElementById('btn-submit').innerText = isRegistering ? "Registrarse y Activar Licencia" : "Iniciar Sesión";
+            document.getElementById('toggle-link').innerText = isRegistering ? "¿Ya pagaste tu suscripción? Inicia sesión aquí" : "¿No tienes cuenta? Regístrate aquí";
+        }
+
+        // RESTABLECER CONTRASEÑA ENVIANDO UN CORREO
+        async function recuperarClave() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                alert("Por favor ingresa tu correo electrónico en el campo superior para enviarte el enlace de recuperación.");
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                alert(`✅ Se ha enviado un correo a ${email} para restablecer tu contraseña.`);
+            } catch (error) {
+                alert("❌ Error al enviar el correo: " + error.message);
+            }
+        }
+
+        // FIREBASE AUTH
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (isRegistering) {
+                const negocio = document.getElementById('nombreNegocio').value;
+                const refNequi = document.getElementById('referenciaPago').value;
+                const plan = document.getElementById('tipoSuscripcion').value;
+
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const uid = userCredential.user.uid;
+
+                    await db.collection("usuarios").doc(uid).set({
+                        nombreNegocio: negocio,
+                        email: email,
+                        refNequi: refNequi,
+                        plan: plan,
+                        estado: "PENDIENTE",
+                        fechaRegistro: new Date().toISOString()
+                    });
+
+                    alert("✅ Registro guardado con éxito.\n\nTu comprobante Nequi ha sido enviado a verificación. Una vez confirmemos la transferencia al 3218353006, activaremos tu acceso.");
+                    await auth.signOut();
+                    toggleMode();
+                } catch (error) {
+                    alert("❌ Error en el registro: " + error.message);
+                }
+            } else {
+                try {
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    const uid = userCredential.user.uid;
+
+                    const docSnap = await db.collection("usuarios").doc(uid).get();
+
+                    if (!docSnap.exists) {
+                        alert("⚠️ No se encontró la información del usuario.");
+                        await auth.signOut();
+                        return;
+                    }
+
+                    const datos = docSnap.data();
+
+                    if (datos.estado === "PENDIENTE") {
+                        alert("⏳ TU PAGO ESTÁ EN REVISIÓN\n\nAún no se ha verificado tu pago en Nequi.");
+                        await auth.signOut();
+                        return;
+                    }
+
+                    if (datos.estado === "ACTIVO") {
+                        licenciaActiva = true;
+                        negocioNombreActual = datos.nombreNegocio;
+
+                        document.getElementById('btn-tab-pos').classList.remove('locked');
+                        document.getElementById('btn-tab-pos').innerHTML = '🍽️ Mesas y Comandas';
+                        document.getElementById('btn-tab-catalogo').classList.remove('locked');
+                        document.getElementById('btn-tab-catalogo').innerHTML = '📦 Catálogo de Productos';
+
+                        const badge = document.getElementById('badge-texto');
+                        badge.innerText = `✅ Licencia Activa: ${datos.nombreNegocio}`;
+                        badge.className = "status-badge badge-logged";
+
+                        // Cargar registros exclusivos del usuario desde Firestore
+                        await cargarDesdeFirestore(uid);
+
+                        alert(`¡Bienvenido de nuevo, ${datos.nombreNegocio}!`);
+                        switchTab(null, 'tab-pos');
+                    }
+                } catch (error) {
+                    alert("❌ Error al ingresar: Revisa tu correo o contraseña.");
+                }
+            }
+        }
+
+        // GESTIÓN DE MESAS
+        function cambiarZona(e, nombreZona) {
+            zonaActual = nombreZona;
+            document.querySelectorAll('.btn-zona').forEach(btn => btn.classList.remove('active'));
+            if(e) e.target.classList.add('active');
+
+            const mesas = mesasPorZona[zonaActual] || [];
+            mesaSeleccionada = mesas.length > 0 ? mesas[0] : "";
+            renderMesas();
+            renderMesaDetalle();
+        }
+
+        function renderMesas() {
+            const container = document.getElementById('grid-mesas-container');
+            container.innerHTML = '';
+            const mesas = mesasPorZona[zonaActual] || [];
+
+            mesas.forEach(nombreMesa => {
+                const tieneConsumo = consumosMesas[nombreMesa] && consumosMesas[nombreMesa].length > 0;
+                const div = document.createElement('div');
+                div.className = `card-mesa ${tieneConsumo ? 'ocupada' : ''} ${nombreMesa === mesaSeleccionada ? 'seleccionada' : ''}`;
+                div.onclick = () => seleccionarMesa(nombreMesa);
+                
+                div.innerHTML = `
+                    <button class="btn-delete-mesa" onclick="eliminarMesa(event, '${nombreMesa}')" title="Borrar Mesa">🗑️</button>
+                    <strong>${nombreMesa}</strong><br>
+                    <small>${tieneConsumo ? 'Ocupada' : 'Disponible'}</small>
+                `;
+                container.appendChild(div);
+            });
+
+            const addCard = document.createElement('div');
+            addCard.className = 'card-add-mesa';
+            addCard.onclick = agregarNuevaMesa;
+            addCard.innerHTML = `<span style="font-size: 24px; font-weight: bold;">+</span><small>Agregar Mesa</small>`;
+            container.appendChild(addCard);
+        }
+
+        function agregarNuevaMesa() {
+            const num = (mesasPorZona[zonaActual] ? mesasPorZona[zonaActual].length + 1 : 1);
+            const nombreMesa = prompt(`Nombre de la nueva mesa para ${zonaActual}:`, `Mesa ${num}`);
+            if(nombreMesa && nombreMesa.trim() !== '') {
+                const limpio = nombreMesa.trim();
+                if(!mesasPorZona[zonaActual]) mesasPorZona[zonaActual] = [];
+                mesasPorZona[zonaActual].push(limpio);
+                consumosMesas[limpio] = [];
+                mesaSeleccionada = limpio;
+                
+                renderMesas();
+                renderMesaDetalle();
+                guardarEnFirestore();
+            }
+        }
+
+        function eliminarMesa(event, nombreMesa) {
+            if (event) event.stopPropagation();
+
+            const tieneConsumos = consumosMesas[nombreMesa] && consumosMesas[nombreMesa].length > 0;
+            let mensaje = `¿Estás seguro de que deseas eliminar la mesa "${nombreMesa}"?`;
+            if (tieneConsumos) {
+                mensaje = `⚠️ ¡ATENCIÓN!\n\nLa mesa "${nombreMesa}" tiene consumos activos pendientes. Si la eliminas, perderás este registro. ¿Continuar?`;
+            }
+
+            if (confirm(mensaje)) {
+                const idx = mesasPorZona[zonaActual].indexOf(nombreMesa);
+                if (idx > -1) mesasPorZona[zonaActual].splice(idx, 1);
+
+                delete consumosMesas[nombreMesa];
+
+                const mesasRestantes = mesasPorZona[zonaActual] || [];
+                mesaSeleccionada = mesasRestantes.length > 0 ? mesasRestantes[0] : "";
+
+                renderMesas();
+                renderMesaDetalle();
+                guardarEnFirestore();
+            }
+        }
+
+        function seleccionarMesa(nombreMesa) {
+            mesaSeleccionada = nombreMesa;
+            renderMesas();
+            renderMesaDetalle();
+        }
+
+        function renderMesaDetalle() {
+            document.getElementById('nombre-mesa-activa').innerText = mesaSeleccionada || "Ninguna";
+            const contenedor = document.getElementById('lista-productos-mesa');
+            contenedor.innerHTML = '';
+            let total = 0;
+
+            if(!mesaSeleccionada) {
+                contenedor.innerHTML = '<p style="color: #a0aec0; text-align:center;">No hay mesas creadas en esta zona.</p>';
+                document.getElementById('total-precio-mesa').innerText = 0;
+                return;
+            }
+
+            const items = consumosMesas[mesaSeleccionada] || [];
+            if(items.length === 0) {
+                contenedor.innerHTML = '<p style="color: #a0aec0; text-align:center;">Mesa sin consumos registrados.</p>';
+            } else {
+                items.forEach((prod, index) => {
+                    const subtotal = prod.cant * prod.precio;
+                    total += subtotal;
+                    contenedor.innerHTML += `
+                        <div class="item-producto">
+                            <div><strong>${prod.nombre}</strong><br><small>$${prod.precio.toLocaleString()} x ${prod.cant} = $${subtotal.toLocaleString()}</small></div>
+                            <div class="actions-item">
+                                <button onclick="modificarCantidad(${index}, 1)">+</button>
+                                <button onclick="modificarCantidad(${index}, -1)">-</button>
+                                <button onclick="eliminarProductoMesa(${index})">🗑️</button>
+                            </div>
+                        </div>`;
+                });
+            }
+            document.getElementById('total-precio-mesa').innerText = total.toLocaleString();
+        }
+
+        function modificarCantidad(index, cambio) {
+            const item = consumosMesas[mesaSeleccionada][index];
+            item.cant += cambio;
+            if(item.cant <= 0) consumosMesas[mesaSeleccionada].splice(index, 1);
+            
+            renderMesas();
+            renderMesaDetalle();
+            guardarEnFirestore();
+        }
+
+        function eliminarProductoMesa(index) {
+            consumosMesas[mesaSeleccionada].splice(index, 1);
+            renderMesas();
+            renderMesaDetalle();
+            guardarEnFirestore();
+        }
+
+        function agregarProductoAMesa() {
+            if(!mesaSeleccionada) return alert("Selecciona o crea una mesa primero.");
+            const select = document.getElementById('select-producto-catalogo');
+            
+            if (!select.value) return alert("No hay ningún producto seleccionado o el catálogo está vacío.");
+            
+            const prod = catalogo.find(p => p.id === parseInt(select.value));
+            if(prod) {
+                if(!consumosMesas[mesaSeleccionada]) consumosMesas[mesaSeleccionada] = [];
+                const existe = consumosMesas[mesaSeleccionada].find(p => p.id === prod.id);
+                if(existe) existe.cant++;
+                else consumosMesas[mesaSeleccionada].push({ ...prod, cant: 1 });
+                
+                renderMesas();
+                renderMesaDetalle();
+                guardarEnFirestore();
+            }
+        }
+
+        // MODAL DE COBRO Y TICKET
+        function abrirModalPago() {
+            if(!mesaSeleccionada) return;
+            const items = consumosMesas[mesaSeleccionada] || [];
+            if(items.length === 0) return alert("La mesa no tiene consumos para cobrar.");
+
+            const total = items.reduce((acc, p) => acc + (p.cant * p.precio), 0);
+            document.getElementById('modal-mesa-nombre').innerText = mesaSeleccionada;
+            document.getElementById('modal-total-cobrar').innerText = total.toLocaleString();
+            document.getElementById('modal-pago').style.display = 'flex';
+        }
+
+        function cerrarModalPago() { document.getElementById('modal-pago').style.display = 'none'; }
+
+        function actualizarInfoMetodoPago() {
+            const metodo = document.getElementById('metodo-pago-select').value;
+            document.getElementById('info-nequi-box').style.display = (metodo === 'NEQUI') ? 'block' : 'none';
+        }
+
+        function confirmarPago(imprimir = false) {
+            const items = consumosMesas[mesaSeleccionada] || [];
+            const total = items.reduce((acc, p) => acc + (p.cant * p.precio), 0);
+            const metodo = document.getElementById('metodo-pago-select').value;
+
+            if (imprimir) {
+                imprimirFacturaTicket(mesaSeleccionada, items, total, metodo);
+            } else {
+                alert(`¡Pago de $${total.toLocaleString()} COP procesado exitosamente!`);
+            }
+
+            // Liberar la mesa y guardar cambios
+            consumosMesas[mesaSeleccionada] = [];
+            cerrarModalPago();
+            renderMesas();
+            renderMesaDetalle();
+            guardarEnFirestore();
+        }
+
+        function imprimirFacturaTicket(nombreMesa, items, total, metodoPago) {
+            const fecha = new Date().toLocaleString('es-CO');
+            let filasItems = '';
+
+            items.forEach(item => {
+                const subtotal = item.cant * item.precio;
+                filasItems += `
+                    <tr>
+                        <td style="text-align: left;">${item.nombre} x${item.cant}</td>
+                        <td style="text-align: right;">$${subtotal.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+
+            const ventanaPrint = window.open('', '_blank', 'width=380,height=600');
+            ventanaPrint.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Ticket - ${nombreMesa}</title>
+                    <style>
+                        body { font-family: 'Courier New', Courier, monospace; width: 280px; margin: 0 auto; padding: 10px; color: #000; font-size: 13px; }
+                        .center { text-align: center; }
+                        .right { text-align: right; }
+                        .linea { border-top: 1px dashed #000; margin: 8px 0; }
+                        table { width: 100%; border-collapse: collapse; }
+                        td { padding: 2px 0; vertical-align: top; }
+                    </style>
+                </head>
+                <body>
+                    <div class="center">
+                        <h2 style="margin: 0; font-size: 16px;">${negocioNombreActual.toUpperCase()}</h2>
+                        <p style="margin: 2px 0;">Recibo de Caja / Comanda</p>
+                        <p style="margin: 2px 0; font-size: 11px;">${fecha}</p>
+                        <p style="margin: 4px 0;"><strong>${nombreMesa}</strong></p>
+                    </div>
+
+                    <div class="linea"></div>
+
+                    <table>
+                        <thead>
+                            <tr style="border-bottom: 1px solid #000;">
+                                <th style="text-align: left;">Cant / Prod</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filasItems}
+                        </tbody>
+                    </table>
+
+                    <div class="linea"></div>
+
+                    <table>
+                        <tr>
+                            <td><strong>TOTAL:</strong></td>
+                            <td class="right"><strong>$${total.toLocaleString()} COP</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Método de Pago:</td>
+                            <td class="right">${metodoPago}</td>
+                        </tr>
+                    </table>
+
+                    <div class="linea"></div>
+
+                    <div class="center" style="margin-top: 15px;">
+                        <p>¡Gracias por su visita!</p>
+                        <p style="font-size: 10px;">Kingdom Vending POS</p>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            window.close();
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            ventanaPrint.document.close();
+        }
+
+        // CATÁLOGO
+        function guardarNuevoProducto(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('prod-nombre').value;
+            const categoria = document.getElementById('prod-categoria').value;
+            const precio = parseFloat(document.getElementById('prod-precio').value);
+
+            catalogo.push({ id: Date.now(), nombre, categoria, precio });
+            renderCatalogo();
+            guardarEnFirestore();
+
+            document.getElementById('prod-nombre').value = '';
+            document.getElementById('prod-precio').value = '';
+            alert(`Producto "${nombre}" guardado.`);
+        }
+
+        function renderCatalogo() {
+            const tbody = document.getElementById('tabla-catalogo-body');
+            tbody.innerHTML = '';
+
+            const selectPOS = document.getElementById('select-producto-catalogo');
+            selectPOS.innerHTML = '';
+
+            if (catalogo.length === 0) {
+                selectPOS.innerHTML = '<option value="">Sin productos en catálogo</option>';
+            }
+
+            catalogo.forEach((prod, index) => {
+                // Actualizar menú desplegable en el panel POS
+                selectPOS.innerHTML += `<option value="${prod.id}">${prod.nombre} - $${prod.precio.toLocaleString()} COP</option>`;
+
+                // Actualizar la tabla de productos
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${prod.nombre}</td>
+                        <td>${prod.categoria}</td>
+                        <td>$${prod.precio.toLocaleString()} COP</td>
+                        <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+                            <button onclick="editarPrecioCatalogo(${index})" style="background: #d97706; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: white;" title="Cambiar Precio">✏️</button>
+                            <button onclick="eliminarProductoCatalogo(${index})" style="background: #dc2626; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: white;" title="Eliminar">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function editarPrecioCatalogo(index) {
+            const prod = catalogo[index];
+            let nuevoPrecioStr = prompt(`Ingrese el nuevo precio para "${prod.nombre}":`, prod.precio);
+            
+            if (nuevoPrecioStr !== null && nuevoPrecioStr.trim() !== "") {
+                let nuevoPrecio = parseFloat(nuevoPrecioStr);
+                if (!isNaN(nuevoPrecio) && nuevoPrecio >= 0) {
+                    catalogo[index].precio = nuevoPrecio;
+                    renderCatalogo();
+                    guardarEnFirestore();
+                } else {
+                    alert("Por favor ingrese un valor numérico válido.");
+                }
+            }
+        }
+
+        function eliminarProductoCatalogo(index) {
+            if (confirm("¿Estás seguro de eliminar este producto del catálogo?")) {
+                catalogo.splice(index, 1);
+                renderCatalogo();
+                guardarEnFirestore();
+            }
+        }
+
+        // INICIALIZACIÓN CON CAMPOS VACÍOS
+        renderCatalogo();
+        renderMesas();
+        renderMesaDetalle();
+    </script>
+</body>
+</html>
