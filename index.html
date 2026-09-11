@@ -3,800 +3,1239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kingdom Vending POS</title>
+    <title>Kingdom Vending POS - Sistema Integrado de Punto de Venta</title>
+    
+    <!-- Iconos de FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SDK Web de Firebase (v8 Compatibilidad) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #121620; color: #e1e6f0; padding: 20px; }
+        /* ========================================== */
+        /* RESET & VARIABLES GLOBALES                 */
+        /* ========================================== */
+        :root {
+            --bg-primary: #121620;
+            --bg-secondary: #1a202c;
+            --bg-card: #232a3b;
+            --bg-input: #2d3748;
+            --border-color: #2d3748;
+            --accent-green: #4caf50;
+            --accent-green-hover: #388e3c;
+            --accent-blue: #3182ce;
+            --danger-red: #e53e3e;
+            --warning-orange: #dd6b20;
+            --text-main: #e1e6f0;
+            --text-muted: #a0aec0;
+            --text-white: #ffffff;
+        }
 
-        header { text-align: center; margin-bottom: 25px; }
-        header h1 { color: #4caf50; font-size: 28px; margin-bottom: 10px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        /* Pestañas */
-        .nav-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
-        .tab-btn { background: #232a3b; color: #a0aec0; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.3s; position: relative; }
-        .tab-btn.active { background: #2e7d32; color: #ffffff; }
-        .tab-btn.locked { opacity: 0.5; cursor: not-allowed; }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .app-wrapper {
+            padding: 20px 20px 0 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
 
-        /* Tarjetas */
-        .card-panel { background: #1a202c; border: 1px solid #2d3748; padding: 25px; border-radius: 10px; max-width: 500px; margin: 0 auto; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #cbd5e0; font-size: 14px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #2d3748; border: 1px solid #4a5568; color: #fff; border-radius: 5px; font-size: 14px; }
-        
-        .btn-primary { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.2s; }
-        .btn-primary:hover { background: #388e3c; }
+        /* ========================================== */
+        /* ENCABEZADO Y STATUS BAR                    */
+        /* ========================================== */
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
 
-        /* Caja de Pago Nequi para Licencia */
-        .nequi-licencia-box { background: #1d2636; border: 2px dashed #e53e3e; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
-        .nequi-number { color: #4caf50; font-size: 22px; font-weight: bold; letter-spacing: 1px; margin: 5px 0; }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
 
-        /* POS / Mesas */
-        .zonas-bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn-zona { background: #2d3748; color: white; border: 1px solid #4a5568; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-zona.active { background: #2e7d32; border-color: #4caf50; }
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--accent-green);
+            font-size: 26px;
+            font-weight: bold;
+        }
 
-        .pos-container { display: flex; flex-wrap: wrap; gap: 20px; }
-        .grid-mesas { flex: 2; min-width: 300px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; align-content: start; }
-        
-        .card-mesa { background: #1a202c; border: 2px solid #2e7d32; padding: 20px 10px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
-        .card-mesa.ocupada { border-color: #e53e3e; background: #2c1919; }
-        .card-mesa.seleccionada { box-shadow: 0 0 10px #4caf50; }
+        .status-badge {
+            background: #2d3748;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-        .btn-delete-mesa { position: absolute; top: 6px; right: 6px; background: transparent; border: none; color: #e53e3e; cursor: pointer; font-size: 15px; padding: 2px 5px; border-radius: 4px; transition: 0.2s; }
-        .btn-delete-mesa:hover { background: #e53e3e22; transform: scale(1.1); }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--danger-red);
+        }
 
-        .card-add-mesa { background: #232a3b; border: 2px dashed #4a5568; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; color: #a0aec0; }
-        .card-add-mesa:hover { border-color: #4caf50; color: #4caf50; }
+        .status-indicator.active {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
 
-        .panel-detalle { flex: 1; min-width: 320px; background: #1a202c; border: 1px solid #2d3748; padding: 20px; border-radius: 8px; height: fit-content; }
-        .item-producto { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; border-bottom: 1px solid #2d3748; padding-bottom: 8px; }
-        .actions-item button { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+        /* ========================================== */
+        /* BARRA DE NAVEGACIÓN Y PESTAÑAS             */
+        /* ========================================== */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
 
-        /* Modales */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #1a202c; border: 1px solid #2d3748; padding: 25px; border-radius: 10px; width: 90%; max-width: 420px; }
+        .tab-btn {
+            background: var(--bg-card);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-        /* Badges */
-        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; }
-        .badge-logged { background: #2e7d32; color: white; }
-        .badge-off { background: #e53e3e; color: white; }
+        .tab-btn:hover {
+            background: var(--border-color);
+            color: var(--text-white);
+        }
 
-        .catalog-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .catalog-table th, .catalog-table td { border: 1px solid #2d3748; padding: 10px; text-align: left; }
+        .tab-btn.active {
+            background: #2e7d32;
+            color: var(--text-white);
+            border-color: var(--accent-green);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ========================================== */
+        /* TARJETAS, FORMULARIOS Y CONTENEDORES      */
+        /* ========================================== */
+        .card-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-input);
+            border: 1px solid #4a5568;
+            color: var(--text-white);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: #2e7d32;
+            color: var(--text-white);
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-green-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger-red);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .nequi-licencia-box {
+            background: #1d2636;
+            border: 2px dashed var(--danger-red);
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .nequi-number {
+            color: var(--accent-green);
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            margin: 8px 0;
+        }
+
+        /* ========================================== */
+        /* MÓDULO POS (MESAS Y COMANDAS)              */
+        /* ========================================== */
+        .pos-container {
+            display: grid;
+            grid-template-columns: 1.8fr 1.2fr;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .pos-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .zonas-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .zona-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .zona-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .mesas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+        }
+
+        .mesa-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 18px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .mesa-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .mesa-card.disponible {
+            border-color: var(--accent-green);
+        }
+
+        .mesa-card.ocupada {
+            border-color: var(--danger-red);
+            background: #2a1b1b;
+        }
+
+        .mesa-card.seleccionada {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 12px rgba(49, 130, 206, 0.6);
+        }
+
+        .mesa-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--text-white);
+        }
+
+        .mesa-status {
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .mesa-card.disponible .mesa-status { color: var(--accent-green); }
+        .mesa-card.ocupada .mesa-status { color: var(--danger-red); }
+
+        /* DETALLE DE COMANDA */
+        .comanda-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 500px;
+        }
+
+        .comanda-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .items-list {
+            flex-grow: 1;
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #2d3748;
+            font-size: 14px;
+        }
+
+        .item-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-qty {
+            background: var(--bg-input);
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .quick-catalog {
+            margin-top: 15px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+
+        .quick-products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            max-height: 130px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+
+        .btn-quick-prod {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 4px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-quick-prod:hover {
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .total-box {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--accent-green);
+            text-align: right;
+            margin: 15px 0;
+        }
+
+        /* ========================================== */
+        /* TABLAS Y REPORTES                          */
+        /* ========================================== */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .data-table th {
+            background: var(--bg-card);
+            color: var(--text-white);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-top: 5px;
+        }
+
+        /* ========================================== */
+        /* MODALES Y FLOTANTES                        */
+        /* ========================================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        /* ========================================== */
+        /* PIE DE PÁGINA (FOOTER LLAMATIVO Y COMPLETO)*/
+        /* ========================================== */
+        footer {
+            background-color: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            margin-top: 50px;
+            padding: 40px 20px 20px 20px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .footer-col h3, .footer-col h4 {
+            color: var(--text-white);
+            font-size: 17px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .footer-col h4::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 35px;
+            height: 2px;
+            background-color: var(--accent-green);
+        }
+
+        .footer-col p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.3s ease, padding-left 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-green);
+            padding-left: 6px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .social-btn {
+            width: 38px;
+            height: 38px;
+            background-color: var(--border-color);
+            color: var(--text-white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .social-btn:hover {
+            background-color: var(--accent-green);
+            color: var(--text-white);
+            transform: translateY(-3px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 20px;
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .footer-bottom strong {
+            color: #cbd5e0;
+        }
     </style>
-
-    <!-- LIBRERÍAS DE FIREBASE -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-    <header>
-        <h1>Kingdom Vending POS</h1>
-        <div id="user-status"><span class="status-badge badge-off" id="badge-texto">🔒 Licencia No Activa (Sin Acceso)</span></div>
-    </header>
-
-    <!-- Menú de Pestañas -->
-    <div class="nav-tabs">
-        <button class="tab-btn active" id="btn-tab-usuario" onclick="switchTab(event, 'tab-usuario')">👤 Registro y Licencia</button>
-        <button class="tab-btn locked" id="btn-tab-pos" onclick="intentarAcceso(event, 'tab-pos')">🍽️ Mesas y Comandas 🔒</button>
-        <button class="tab-btn locked" id="btn-tab-catalogo" onclick="intentarAcceso(event, 'tab-catalogo')">📦 Catálogo de Productos 🔒</button>
-    </div>
-
-    <!-- PESTAÑA 1: REGISTRO, PAGO DE LICENCIA Y LOGIN -->
-    <div id="tab-usuario" class="tab-content active">
-        <div class="card-panel">
-            <h2 style="margin-bottom: 15px; text-align: center;" id="form-title">Registro de Nuevo Establecimiento</h2>
-            
-            <div class="nequi-licencia-box" id="nequi-subscription-box">
-                <p style="font-size: 13px; color: #cbd5e0;">Para activar tu licencia del software, realiza la transferencia a:</p>
-                <div class="nequi-number">Nequi: 3218353006</div>
-                <small style="color: #a0aec0;" id="monto-texto">Monto: $10.000 COP / mes</small>
+    <div class="app-wrapper">
+        <!-- Encabezado Principal -->
+        <header>
+            <div class="header-top">
+                <div class="brand-logo">
+                    <i class="fas fa-cash-register"></i> Kingdom Vending POS
+                </div>
+                <div class="status-badge">
+                    <div class="status-indicator" id="indicador-licencia"></div>
+                    <span id="texto-licencia">Licencia: Inactiva</span>
+                </div>
             </div>
+            <p style="color: var(--text-muted); font-size: 14px;">
+                Gestión Integral de Puntos de Venta, Comandas y Control de Suscripciones
+            </p>
+        </header>
 
-            <form id="authForm" onsubmit="handleAuth(event)">
-                <div class="form-group" id="group-negocio">
-                    <label>Nombre del Negocio / Establecimiento:</label>
-                    <input type="text" id="nombreNegocio" placeholder="Ej: Cafetería El Roble" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Correo Electrónico:</label>
-                    <input type="email" id="email" placeholder="cliente@ejemplo.com" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Contraseña de Acceso:</label>
-                    <input type="password" id="password" required>
-                </div>
-
-                <div class="form-group" id="group-plan">
-                    <label>Plan de Suscripción:</label>
-                    <select id="tipoSuscripcion" onchange="actualizarMontoSuscripcion()">
-                        <option value="MENSUAL">Mensual - $10.000 COP / mes</option>
-                        <option value="ANUAL">Anual - $100.000 COP / año (Ahorras 2 meses)</option>
-                    </select>
-                </div>
-
-                <div class="form-group" id="group-comprobante">
-                    <label>Número de Referencia / Nequi de Transferencia:</label>
-                    <input type="text" id="referenciaPago" placeholder="Ej: M123456 o Número celular" required>
-                </div>
-
-                <button type="submit" class="btn-primary" id="btn-submit">Registrarse y Activar Licencia</button>
-            </form>
-
-            <div style="margin-top: 15px; text-align: center; font-size: 14px;">
-                <a href="#" onclick="toggleMode()" id="toggle-link" style="color: #4caf50;">¿Ya pagaste tu suscripción? Inicia sesión aquí</a>
-                <br>
-                <!-- BOTÓN OLVIDÉ MI CONTRASEÑA (SOLO VISIBLE EN MODO INICIAR SESIÓN) -->
-                <a href="#" onclick="recuperarClave()" id="link-recuperar" style="color: #ff9800; display: none; margin-top: 10px; font-size: 13px;">¿Olvidaste tu contraseña?</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- PESTAÑA 2: POS -->
-    <div id="tab-pos" class="tab-content">
-        <div class="zonas-bar" id="contenedor-zonas">
-            <button class="btn-zona active" onclick="cambiarZona(event, 'ZONA DE BAR')">ZONA DE BAR</button>
-            <button class="btn-zona" onclick="cambiarZona(event, 'ZONA DE ONCES')">ZONA DE ONCES</button>
-            <button class="btn-zona" onclick="cambiarZona(event, 'CALLE')">CALLE</button>
+        <!-- Navegación por Pestañas -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" id="btn-tab-registro" onclick="cambiarPestaña('registro')">
+                <i class="fas fa-user-plus"></i> Registro y Plan
+            </button>
+            <button class="tab-btn" id="btn-tab-pos" onclick="cambiarPestaña('pos')">
+                <i class="fas fa-utensils"></i> Mesas y Comandas
+            </button>
+            <button class="tab-btn" id="btn-tab-catalogo" onclick="cambiarPestaña('catalogo')">
+                <i class="fas fa-boxes"></i> Catálogo de Productos
+            </button>
+            <button class="tab-btn" id="btn-tab-reportes" onclick="cambiarPestaña('reportes')">
+                <i class="fas fa-chart-bar"></i> Reportes y Ventas
+            </button>
         </div>
 
-        <div class="pos-container">
-            <div class="grid-mesas" id="grid-mesas-container"></div>
-
-            <div class="panel-detalle">
-                <h3>Detalle: <span id="nombre-mesa-activa" style="color: #4caf50;">Ninguna</span></h3>
-                <hr style="margin: 10px 0; border-color: #2d3748;">
+        <!-- PESTAÑA 1: REGISTRO Y SUSCRIPCIÓN NEQUI -->
+        <div id="tab-registro" class="tab-content active">
+            <div class="card-panel">
+                <h2 style="color: #fff; margin-bottom: 18px; font-size: 20px; text-align: center;">
+                    <i class="fas fa-id-card" style="color: var(--accent-green);"></i> Registro de Establecimiento
+                </h2>
                 
-                <div id="lista-productos-mesa"></div>
-
-                <hr style="margin: 10px 0; border-color: #2d3748;">
-                
-                <div class="form-group" style="margin-top: 15px;">
-                    <label>Agregar Producto a la Mesa:</label>
-                    <div style="display: flex; gap: 5px;">
-                        <select id="select-producto-catalogo"></select>
-                        <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="agregarProductoAMesa()">+</button>
-                    </div>
-                </div>
-
-                <h2 style="margin-top: 15px; text-align: right;">Total: $<span id="total-precio-mesa">0</span> COP</h2>
-                <button class="btn-primary" style="background: #d97706; margin-top: 15px;" onclick="abrirModalPago()">💳 Cobrar / Cerrar Mesa</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PESTAÑA 3: CATÁLOGO -->
-    <div id="tab-catalogo" class="tab-content">
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-            <div class="card-panel" style="flex: 1; min-width: 280px; margin: 0;">
-                <h3 style="margin-bottom: 15px;">Nuevo Producto</h3>
-                <form onsubmit="guardarNuevoProducto(event)">
+                <form id="form-registro" onsubmit="procesarRegistro(event)">
                     <div class="form-group">
-                        <label>Nombre del Producto:</label>
-                        <input type="text" id="prod-nombre" placeholder="Ej: Capuchino Especial" required>
+                        <label><i class="fas fa-store"></i> Nombre del Negocio:</label>
+                        <input type="text" id="reg-nombre" placeholder="Ej: Kingdom Bar / Vending" required>
                     </div>
+
                     <div class="form-group">
-                        <label>Categoría:</label>
-                        <select id="prod-categoria">
-                            <option value="Bebidas">Bebidas</option>
-                            <option value="Amasijos">Amasijos</option>
-                            <option value="Licores">Licores</option>
+                        <label><i class="fas fa-envelope"></i> Correo Electrónico:</label>
+                        <input type="email" id="reg-correo" placeholder="correo@ejemplo.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-key"></i> Contraseña de Acceso:</label>
+                        <input type="password" id="reg-password" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Plan de Suscripción:</label>
+                        <select id="reg-plan" onchange="actualizarMontoPlan()">
+                            <option value="10000">Mensual - $10.000 COP</option>
+                            <option value="100000">Anual - $100.000 COP (Descuento especial)</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Precio Unitario (COP):</label>
-                        <input type="number" id="prod-precio" placeholder="5000" required>
+
+                    <div class="nequi-licencia-box">
+                        <p style="font-size: 13px; color: #e2e8f0;">
+                            <i class="fas fa-mobile-alt" style="color: var(--danger-red);"></i> Transfiere a la cuenta Nequi autorizada:
+                        </p>
+                        <div class="nequi-number">300 000 0000</div>
+                        <p style="font-size: 13px; color: var(--text-muted);">
+                            Monto a transferir: <strong id="lbl-monto-plan" style="color: var(--accent-green);">$10.000 COP</strong>
+                        </p>
                     </div>
-                    <button type="submit" class="btn-primary">Guardar Producto</button>
+
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-check-circle"></i> Confirmar y Activar Licencia
+                    </button>
                 </form>
             </div>
+        </div>
 
-            <div style="flex: 2; min-width: 320px; background: #1a202c; padding: 20px; border-radius: 8px; border: 1px solid #2d3748;">
-                <h3>Lista de Productos</h3>
-                <table class="catalog-table">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Categoría</th>
-                            <th>Precio</th>
-                            <th style="text-align: center;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-catalogo-body"></tbody>
-                </table>
+        <!-- PESTAÑA 2: MÓDULO POS (MESAS Y COMANDAS) -->
+        <div id="tab-pos" class="tab-content">
+            <div class="pos-container">
+                <!-- Sección Izquierda: Cuadrícula de Mesas -->
+                <div>
+                    <div class="zonas-bar">
+                        <button class="zona-btn active" onclick="filtrarZona('TODAS', this)">Todas las Zonas</button>
+                        <button class="zona-btn" onclick="filtrarZona('ZONA DE BAR', this)">Zona de Bar</button>
+                        <button class="zona-btn" onclick="filtrarZona('ZONA DE ONCES', this)">Zona de Onces</button>
+                        <button class="zona-btn" onclick="filtrarZona('CALLE', this)">Zona Calle</button>
+                    </div>
+
+                    <div class="mesas-grid" id="contenedor-mesas">
+                        <!-- Generado dinámicamente desde JS -->
+                    </div>
+                </div>
+
+                <!-- Sección Derecha: Comanda Actual -->
+                <div class="comanda-box">
+                    <div>
+                        <div class="comanda-header">
+                            <h3 style="color: #fff;" id="titulo-comanda">
+                                <i class="fas fa-receipt" style="color: var(--accent-green);"></i> Seleccione una Mesa
+                            </h3>
+                            <span id="subtitulo-zona" style="font-size: 12px; color: var(--text-muted);">No hay mesa activa</span>
+                        </div>
+
+                        <div class="items-list" id="lista-items">
+                            <p style="color: var(--text-muted); text-align: center; font-size: 13px; margin-top: 30px;">
+                                La comanda está vacía.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Selección rápida del catálogo -->
+                        <div class="quick-catalog">
+                            <label style="font-size: 12px; color: var(--text-muted);">Agregar rápido al pedido:</label>
+                            <div class="quick-products-grid" id="quick-products">
+                                <!-- Generado desde JS -->
+                            </div>
+                        </div>
+
+                        <div class="total-box">
+                            Total: <span id="lbl-total">$0 COP</span>
+                        </div>
+
+                        <button class="btn-primary" onclick="abrirModalPago()">
+                            <i class="fas fa-cash-register"></i> Facturar / Cobrar
+                        </button>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <!-- PESTAÑA 3: CATÁLOGO DE PRODUCTOS -->
+        <div id="tab-catalogo" class="tab-content">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                <div class="card-panel" style="margin: 0; max-width: 100%;">
+                    <h3 style="color: #fff; margin-bottom: 15px;">
+                        <i class="fas fa-plus-circle" style="color: var(--accent-green);"></i> Nuevo Producto
+                    </h3>
+                    <form onsubmit="agregarProductoCatalogo(event)">
+                        <div class="form-group">
+                            <label>Nombre del Producto:</label>
+                            <input type="text" id="prod-nombre" placeholder="Ej: Cerveza Club Colombia" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría:</label>
+                            <select id="prod-categoria">
+                                <option value="Bebidas">Bebidas</option>
+                                <option value="Comida Rápida">Comida Rápida</option>
+                                <option value="Cafetería">Cafetería</option>
+                                <option value="Snacks">Snacks</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Precio de Venta (COP):</label>
+                            <input type="number" id="prod-precio" placeholder="8000" min="500" required>
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Guardar Producto</button>
+                    </form>
+                </div>
+
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 15px;"><i class="fas fa-boxes"></i> Productos Registrados</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-catalogo-body">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 4: REPORTES Y VENTAS -->
+        <div id="tab-reportes" class="tab-content">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div>Ventas Totales</div>
+                    <div class="kpi-value" id="kpi-total-ventas">$0 COP</div>
+                </div>
+                <div class="kpi-card">
+                    <div>Comandas Cobradas</div>
+                    <div class="kpi-value" id="kpi-cant-comandas">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div>Suscripción POS</div>
+                    <div class="kpi-value" id="kpi-estado-plan" style="color: var(--accent-blue);">Inactiva</div>
+                </div>
+            </div>
+
+            <h3 style="color: #fff; margin-bottom: 15px;"><i class="fas fa-history"></i> Historial de Facturación</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th># Factura</th>
+                        <th>Mesa / Cliente</th>
+                        <th>Método Pago</th>
+                        <th>Total</th>
+                        <th>Fecha y Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-ventas-body">
+                    <!-- Filas dinámicas -->
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- MODAL DE PAGO E IMPRESIÓN DE TICKET -->
-    <div class="modal-overlay" id="modal-pago">
+    <!-- MODAL DE PAGO / LIQUIDACIÓN -->
+    <div id="modal-pago" class="modal">
         <div class="modal-content">
-            <h3 style="margin-bottom: 15px; text-align: center;">Cobrar - <span id="modal-mesa-nombre">Mesa</span></h3>
-            <p style="font-size: 18px; text-align: center; font-weight: bold; margin-bottom: 15px; color: #4caf50;">Total a cobrar: $<span id="modal-total-cobrar">0</span> COP</p>
+            <h3 style="color: #fff; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <i class="fas fa-coins" style="color: var(--accent-green);"></i> Liquidación de Comanda
+            </h3>
+            
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+                Mesa: <strong id="modal-mesa-nombre" style="color: #fff;">-</strong>
+            </p>
 
             <div class="form-group">
-                <label>Método de Pago del Cliente:</label>
-                <select id="metodo-pago-select" onchange="actualizarInfoMetodoPago()">
-                    <option value="EFECTIVO">💵 Efectivo</option>
-                    <option value="NEQUI">📱 Nequi del Negocio</option>
-                    <option value="TARJETA">💳 Datáfono / Tarjeta</option>
+                <label>Método de Pago:</label>
+                <select id="metodo-pago">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Nequi">Nequi</option>
+                    <option value="Tarjeta">Tarjeta Débito/Crédito</option>
                 </select>
             </div>
 
-            <div id="info-nequi-box" style="display: none; background: #232a3b; border: 1px solid #3182ce; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 15px;">
-                <p style="font-size: 13px; color: #cbd5e0;">Muestra el QR o Nequi de tu local al cliente.</p>
+            <div style="font-size: 20px; font-weight: bold; color: var(--accent-green); margin: 20px 0; text-align: right;">
+                Monto a Cobrar: <span id="modal-monto-total">$0 COP</span>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
-                <button class="btn-primary" style="background: #2563eb;" onclick="confirmarPago(true)">🖨️ Cobrar e Imprimir Ticket</button>
-                <button class="btn-primary" onclick="confirmarPago(false)">💵 Solo Cobrar y Liberar</button>
-                <button class="btn-primary" style="background: #e53e3e;" onclick="cerrarModalPago()">Cancelar</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" onclick="procesarCobro()"><i class="fas fa-check"></i> Finalizar y Ticket</button>
+                <button class="btn-danger" onclick="cerrarModalPago()"><i class="fas fa-times"></i> Cancelar</button>
             </div>
         </div>
     </div>
 
+    <!-- PIE DE PÁGINA (FOOTER LLAMATIVO Y COMPLETO) -->
+    <footer>
+        <div class="footer-container">
+            <!-- Columna 1: Datos del Proyecto -->
+            <div class="footer-col">
+                <h3 style="color: var(--accent-green);"><i class="fas fa-cash-register" style="margin-right: 8px;"></i>Kingdom Vending POS</h3>
+                <p>Plataforma web para gestión integral de restaurantes, bares y puntos de venta. Control de comandas por zonas y facturación ágil.</p>
+                
+                <div class="social-links">
+                    <a href="https://github.com/digitalcris01" target="_blank" class="social-btn" title="GitHub">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="https://doctor-pcs5.webnode.com.co" target="_blank" class="social-btn" title="Sitio Web Oficial">
+                        <i class="fas fa-globe"></i>
+                    </a>
+                    <a href="mailto:cristian.enciso@sena.edu.co" class="social-btn" title="Correo">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                    <a href="https://wa.me/573000000000" target="_blank" class="social-btn" title="WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Columna 2: Navegación Rápida -->
+            <div class="footer-col">
+                <h4>Navegación Rápida</h4>
+                <ul class="footer-links">
+                    <li><a href="#" onclick="cambiarPestaña('registro')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Registro y Suscripción</a></li>
+                    <li><a href="#" onclick="cambiarPestaña('pos')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Mesas y Comandas</a></li>
+                    <li><a href="#" onclick="cambiarPestaña('catalogo')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Catálogo de Productos</a></li>
+                    <li><a href="https://github.com/digitalcris01/kingdom-vending-pos" target="_blank"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Repositorio GitHub</a></li>
+                </ul>
+            </div>
+
+            <!-- Columna 3: Información del Desarrollador / Aprendiz -->
+            <div class="footer-col">
+                <h4>Desarrollador</h4>
+                <p><strong>Cristian Danilo Enciso Ahumada</strong></p>
+                <p><i class="fas fa-graduation-cap" style="color: var(--accent-green); margin-right: 6px;"></i> Tecnólogo ADSO — SENA</p>
+                <p><i class="fas fa-map-marker-alt" style="color: var(--accent-green); margin-right: 8px;"></i> Pesca, Boyacá, Colombia</p>
+                <p><i class="fas fa-laptop-code" style="color: var(--accent-green); margin-right: 6px;"></i> Desarrollo de Software & Soporte</p>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 <strong>Kingdom Vending POS</strong> — Desarrollado por <strong>Cristian Danilo Enciso Ahumada</strong>. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- LÓGICA JAVASCRIPT COMPLETA DEL APLICATIVO -->
     <script>
-        // CONFIGURACIÓN DE FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyA0oyye96Iw39bYd_PuNjpssA0uEmlv4xs",
-            authDomain: "kingdom-vending-pos.firebaseapp.com",
-            projectId: "kingdom-vending-pos",
-            storageBucket: "kingdom-vending-pos.firebasestorage.app",
-            messagingSenderId: "730386658123",
-            appId: "1:730386658123:web:25911dced1647f261beece",
-            measurementId: "G-XQ3X88R6B2"
-        };
+        // Configuración e Inicialización del Estado
+        let suscripcionActiva = false;
+        let mesaSeleccionadaId = null;
+        let zonaFiltroActual = 'TODAS';
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        // Base de datos local simulada (Persistencia en LocalStorage)
+        let mesas = JSON.parse(localStorage.getItem('kv_mesas')) || [
+            { id: 1, nombre: 'Mesa 1', zona: 'ZONA DE BAR', estado: 'disponible', items: [] },
+            { id: 2, nombre: 'Mesa 2', zona: 'ZONA DE BAR', estado: 'disponible', items: [] },
+            { id: 3, nombre: 'Mesa 3', zona: 'ZONA DE BAR', estado: 'disponible', items: [] },
+            { id: 4, nombre: 'Mesa 4', zona: 'ZONA DE ONCES', estado: 'disponible', items: [] },
+            { id: 5, nombre: 'Mesa 5', zona: 'ZONA DE ONCES', estado: 'disponible', items: [] },
+            { id: 6, nombre: 'Mesa 6', zona: 'CALLE', estado: 'disponible', items: [] },
+            { id: 7, nombre: 'Mesa 7', zona: 'CALLE', estado: 'disponible', items: [] }
+        ];
 
-        let licenciaActiva = false;
-        let isRegistering = true;
-        let negocioNombreActual = "Kingdom Vending POS";
+        let productos = JSON.parse(localStorage.getItem('kv_productos')) || [
+            { id: 101, nombre: 'Cerveza Aguila', categoria: 'Bebidas', precio: 5000 },
+            { id: 102, nombre: 'Gaseosa 350ml', categoria: 'Bebidas', precio: 3500 },
+            { id: 103, nombre: 'Empanada Mixta', categoria: 'Comida Rápida', precio: 3000 },
+            { id: 104, nombre: 'Café Tinto Express', categoria: 'Cafetería', precio: 2000 }
+        ];
 
-        let zonaActual = "ZONA DE BAR";
-        let mesaSeleccionada = "";
+        let historialVentas = JSON.parse(localStorage.getItem('kv_ventas')) || [];
 
-        // ESTRUCTURAS DE DATOS VACÍAS POR DEFECTO
-        let mesasPorZona = {
-            "ZONA DE BAR": [],
-            "ZONA DE ONCES": [],
-            "CALLE": []
-        };
-        let catalogo = [];
-        let consumosMesas = {};
+        // Inicializador al cargar el DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarMesas();
+            renderizarQuickProducts();
+            renderizarCatalogo();
+            renderizarReportes();
+            verificarEstadoLicencia();
+        });
 
-        // PERSISTENCIA EN FIRESTORE VINCULADA AL UID DEL USUARIO
-        async function guardarEnFirestore() {
-            const user = auth.currentUser;
-            if (!user) return;
-            try {
-                await db.collection("usuarios").doc(user.uid).collection("pos").doc("datos").set({
-                    mesasPorZona: mesasPorZona,
-                    consumosMesas: consumosMesas,
-                    catalogo: catalogo
-                }, { merge: true });
-            } catch (e) {
-                console.error("Error al guardar datos en la nube:", e);
+        function guardarStorage() {
+            localStorage.setItem('kv_mesas', JSON.stringify(mesas));
+            localStorage.setItem('kv_productos', JSON.stringify(productos));
+            localStorage.setItem('kv_ventas', JSON.stringify(historialVentas));
+            localStorage.setItem('kv_licencia', suscripcionActiva);
+        }
+
+        function verificarEstadoLicencia() {
+            const guardada = localStorage.getItem('kv_licencia');
+            if (guardada === 'true') {
+                suscripcionActiva = true;
+                document.getElementById('indicador-licencia').classList.add('active');
+                document.getElementById('texto-licencia').innerText = 'Licencia: ACTIVA';
+                document.getElementById('kpi-estado-plan').innerText = 'Activa';
+                document.getElementById('kpi-estado-plan').style.color = 'var(--accent-green)';
             }
         }
 
-        async function cargarDesdeFirestore(uid) {
-            try {
-                const docSnap = await db.collection("usuarios").doc(uid).collection("pos").doc("datos").get();
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    mesasPorZona = data.mesasPorZona || { "ZONA DE BAR": [], "ZONA DE ONCES": [], "CALLE": [] };
-                    consumosMesas = data.consumosMesas || {};
-                    catalogo = data.catalogo || [];
-                } else {
-                    mesasPorZona = { "ZONA DE BAR": [], "ZONA DE ONCES": [], "CALLE": [] };
-                    consumosMesas = {};
-                    catalogo = [];
-                }
-
-                const mesasExistentes = mesasPorZona[zonaActual] || [];
-                mesaSeleccionada = mesasExistentes.length > 0 ? mesasExistentes[0] : "";
-
-                renderCatalogo();
-                renderMesas();
-                renderMesaDetalle();
-            } catch (e) {
-                console.error("Error al cargar datos desde Firestore:", e);
-            }
-        }
-
-        // PESTAÑAS Y ACCESO
-        function intentarAcceso(e, tabId) {
-            if (!licenciaActiva) {
-                alert("⚠️ ACCESO DENEGADO\n\nDebes registrarte e ingresar tu comprobante de pago Nequi al 3218353006 para activar el software.");
-                switchTab(null, 'tab-usuario');
-            } else {
-                switchTab(e, tabId);
-            }
-        }
-
-        function switchTab(e, tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            
-            document.getElementById(tabId).classList.add('active');
-            
-            if (tabId === 'tab-usuario') document.getElementById('btn-tab-usuario').classList.add('active');
-            if (tabId === 'tab-pos') document.getElementById('btn-tab-pos').classList.add('active');
-            if (tabId === 'tab-catalogo') document.getElementById('btn-tab-catalogo').classList.add('active');
-        }
-
-        function actualizarMontoSuscripcion() {
-            const plan = document.getElementById('tipoSuscripcion').value;
-            document.getElementById('monto-texto').innerText = plan === "ANUAL" ? "Monto: $100.000 COP / año" : "Monto: $10.000 COP / mes";
-        }
-
-        function toggleMode() {
-            isRegistering = !isRegistering;
-            document.getElementById('form-title').innerText = isRegistering ? "Registro de Nuevo Establecimiento" : "Iniciar Sesión";
-            document.getElementById('nequi-subscription-box').style.display = isRegistering ? "block" : "none";
-            document.getElementById('group-plan').style.display = isRegistering ? "block" : "none";
-            document.getElementById('group-comprobante').style.display = isRegistering ? "block" : "none";
-            document.getElementById('group-negocio').style.display = isRegistering ? "block" : "none";
-
-            // Mostrar "Olvidaste tu contraseña" únicamente en Modo Iniciar Sesión
-            document.getElementById('link-recuperar').style.display = isRegistering ? "none" : "inline-block";
-
-            document.getElementById('nombreNegocio').required = isRegistering;
-            document.getElementById('referenciaPago').required = isRegistering;
-
-            document.getElementById('btn-submit').innerText = isRegistering ? "Registrarse y Activar Licencia" : "Iniciar Sesión";
-            document.getElementById('toggle-link').innerText = isRegistering ? "¿Ya pagaste tu suscripción? Inicia sesión aquí" : "¿No tienes cuenta? Regístrate aquí";
-        }
-
-        // RESTABLECER CONTRASEÑA ENVIANDO UN CORREO
-        async function recuperarClave() {
-            const email = document.getElementById('email').value;
-            if (!email) {
-                alert("Por favor ingresa tu correo electrónico en el campo superior para enviarte el enlace de recuperación.");
+        function cambiarPestaña(tabId) {
+            if ((tabId === 'pos' || tabId === 'catalogo' || tabId === 'reportes') && !suscripcionActiva) {
+                alert('Debe activar la suscripción del sistema para acceder a este módulo.');
                 return;
             }
-            try {
-                await auth.sendPasswordResetEmail(email);
-                alert(`✅ Se ha enviado un correo a ${email} para restablecer tu contraseña.`);
-            } catch (error) {
-                alert("❌ Error al enviar el correo: " + error.message);
-            }
+
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('btn-tab-' + tabId).classList.add('active');
         }
 
-        // FIREBASE AUTH
-        async function handleAuth(e) {
+        function actualizarMontoPlan() {
+            const val = document.getElementById('reg-plan').value;
+            document.getElementById('lbl-monto-plan').innerText = val === '100000' ? '$100.000 COP (Anual)' : '$10.000 COP (Mensual)';
+        }
+
+        function procesarRegistro(e) {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            if (isRegistering) {
-                const negocio = document.getElementById('nombreNegocio').value;
-                const refNequi = document.getElementById('referenciaPago').value;
-                const plan = document.getElementById('tipoSuscripcion').value;
-
-                try {
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    const uid = userCredential.user.uid;
-
-                    await db.collection("usuarios").doc(uid).set({
-                        nombreNegocio: negocio,
-                        email: email,
-                        refNequi: refNequi,
-                        plan: plan,
-                        estado: "PENDIENTE",
-                        fechaRegistro: new Date().toISOString()
-                    });
-
-                    alert("✅ Registro guardado con éxito.\n\nTu comprobante Nequi ha sido enviado a verificación. Una vez confirmemos la transferencia al 3218353006, activaremos tu acceso.");
-                    await auth.signOut();
-                    toggleMode();
-                } catch (error) {
-                    alert("❌ Error en el registro: " + error.message);
-                }
-            } else {
-                try {
-                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                    const uid = userCredential.user.uid;
-
-                    const docSnap = await db.collection("usuarios").doc(uid).get();
-
-                    if (!docSnap.exists) {
-                        alert("⚠️ No se encontró la información del usuario.");
-                        await auth.signOut();
-                        return;
-                    }
-
-                    const datos = docSnap.data();
-
-                    if (datos.estado === "PENDIENTE") {
-                        alert("⏳ TU PAGO ESTÁ EN REVISIÓN\n\nAún no se ha verificado tu pago en Nequi.");
-                        await auth.signOut();
-                        return;
-                    }
-
-                    if (datos.estado === "ACTIVO") {
-                        licenciaActiva = true;
-                        negocioNombreActual = datos.nombreNegocio;
-
-                        document.getElementById('btn-tab-pos').classList.remove('locked');
-                        document.getElementById('btn-tab-pos').innerHTML = '🍽️ Mesas y Comandas';
-                        document.getElementById('btn-tab-catalogo').classList.remove('locked');
-                        document.getElementById('btn-tab-catalogo').innerHTML = '📦 Catálogo de Productos';
-
-                        const badge = document.getElementById('badge-texto');
-                        badge.innerText = `✅ Licencia Activa: ${datos.nombreNegocio}`;
-                        badge.className = "status-badge badge-logged";
-
-                        // Cargar registros exclusivos del usuario desde Firestore
-                        await cargarDesdeFirestore(uid);
-
-                        alert(`¡Bienvenido de nuevo, ${datos.nombreNegocio}!`);
-                        switchTab(null, 'tab-pos');
-                    }
-                } catch (error) {
-                    alert("❌ Error al ingresar: Revisa tu correo o contraseña.");
-                }
-            }
+            suscripcionActiva = true;
+            guardarStorage();
+            verificarEstadoLicencia();
+            alert('¡Cuenta de establecimiento creada y licencia activada exitosamente!');
+            cambiarPestaña('pos');
         }
 
-        // GESTIÓN DE MESAS
-        function cambiarZona(e, nombreZona) {
-            zonaActual = nombreZona;
-            document.querySelectorAll('.btn-zona').forEach(btn => btn.classList.remove('active'));
-            if(e) e.target.classList.add('active');
-
-            const mesas = mesasPorZona[zonaActual] || [];
-            mesaSeleccionada = mesas.length > 0 ? mesas[0] : "";
-            renderMesas();
-            renderMesaDetalle();
+        /* LÓGICA DE MESAS Y COMANDAS */
+        function filtrarZona(zona, btn) {
+            zonaFiltroActual = zona;
+            document.querySelectorAll('.zona-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderizarMesas();
         }
 
-        function renderMesas() {
-            const container = document.getElementById('grid-mesas-container');
-            container.innerHTML = '';
-            const mesas = mesasPorZona[zonaActual] || [];
+        function renderizarMesas() {
+            const cont = document.getElementById('contenedor-mesas');
+            cont.innerHTML = '';
 
-            mesas.forEach(nombreMesa => {
-                const tieneConsumo = consumosMesas[nombreMesa] && consumosMesas[nombreMesa].length > 0;
-                const div = document.createElement('div');
-                div.className = `card-mesa ${tieneConsumo ? 'ocupada' : ''} ${nombreMesa === mesaSeleccionada ? 'seleccionada' : ''}`;
-                div.onclick = () => seleccionarMesa(nombreMesa);
-                
-                div.innerHTML = `
-                    <button class="btn-delete-mesa" onclick="eliminarMesa(event, '${nombreMesa}')" title="Borrar Mesa">🗑️</button>
-                    <strong>${nombreMesa}</strong><br>
-                    <small>${tieneConsumo ? 'Ocupada' : 'Disponible'}</small>
+            const filtradas = zonaFiltroActual === 'TODAS' 
+                ? mesas 
+                : mesas.filter(m => m.zona === zonaFiltroActual);
+
+            filtradas.forEach(m => {
+                const card = document.createElement('div');
+                card.className = `mesa-card ${m.estado} ${m.id === mesaSeleccionadaId ? 'seleccionada' : ''}`;
+                card.onclick = () => seleccionarMesa(m.id);
+                card.innerHTML = `
+                    <div class="mesa-title">${m.nombre}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top:2px;">${m.zona}</div>
+                    <div class="mesa-status">${m.estado.toUpperCase()}</div>
                 `;
-                container.appendChild(div);
+                cont.appendChild(card);
             });
-
-            const addCard = document.createElement('div');
-            addCard.className = 'card-add-mesa';
-            addCard.onclick = agregarNuevaMesa;
-            addCard.innerHTML = `<span style="font-size: 24px; font-weight: bold;">+</span><small>Agregar Mesa</small>`;
-            container.appendChild(addCard);
         }
 
-        function agregarNuevaMesa() {
-            const num = (mesasPorZona[zonaActual] ? mesasPorZona[zonaActual].length + 1 : 1);
-            const nombreMesa = prompt(`Nombre de la nueva mesa para ${zonaActual}:`, `Mesa ${num}`);
-            if(nombreMesa && nombreMesa.trim() !== '') {
-                const limpio = nombreMesa.trim();
-                if(!mesasPorZona[zonaActual]) mesasPorZona[zonaActual] = [];
-                mesasPorZona[zonaActual].push(limpio);
-                consumosMesas[limpio] = [];
-                mesaSeleccionada = limpio;
-                
-                renderMesas();
-                renderMesaDetalle();
-                guardarEnFirestore();
-            }
+        function seleccionarMesa(id) {
+            mesaSeleccionadaId = id;
+            renderizarMesas();
+            renderizarComanda();
         }
 
-        function eliminarMesa(event, nombreMesa) {
-            if (event) event.stopPropagation();
+        function renderizarComanda() {
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            const titulo = document.getElementById('titulo-comanda');
+            const sub = document.getElementById('subtitulo-zona');
+            const lista = document.getElementById('lista-items');
+            const totalLbl = document.getElementById('lbl-total');
 
-            const tieneConsumos = consumosMesas[nombreMesa] && consumosMesas[nombreMesa].length > 0;
-            let mensaje = `¿Estás seguro de que deseas eliminar la mesa "${nombreMesa}"?`;
-            if (tieneConsumos) {
-                mensaje = `⚠️ ¡ATENCIÓN!\n\nLa mesa "${nombreMesa}" tiene consumos activos pendientes. Si la eliminas, perderás este registro. ¿Continuar?`;
+            if (!mesa) {
+                titulo.innerHTML = '<i class="fas fa-receipt"></i> Seleccione una Mesa';
+                sub.innerText = 'No hay mesa activa';
+                lista.innerHTML = '<p style="color: var(--text-muted); text-align: center; font-size: 13px; margin-top: 30px;">Seleccione una mesa para tomar el pedido.</p>';
+                totalLbl.innerText = '$0 COP';
+                return;
             }
 
-            if (confirm(mensaje)) {
-                const idx = mesasPorZona[zonaActual].indexOf(nombreMesa);
-                if (idx > -1) mesasPorZona[zonaActual].splice(idx, 1);
+            titulo.innerHTML = `<i class="fas fa-receipt"></i> ${mesa.nombre}`;
+            sub.innerText = `Zona: ${mesa.zona} | Estado: ${mesa.estado.toUpperCase()}`;
 
-                delete consumosMesas[nombreMesa];
-
-                const mesasRestantes = mesasPorZona[zonaActual] || [];
-                mesaSeleccionada = mesasRestantes.length > 0 ? mesasRestantes[0] : "";
-
-                renderMesas();
-                renderMesaDetalle();
-                guardarEnFirestore();
+            if (mesa.items.length === 0) {
+                lista.innerHTML = '<p style="color: var(--text-muted); text-align: center; font-size: 13px; margin-top: 30px;">Mesa sin consumo registrado.</p>';
+                totalLbl.innerText = '$0 COP';
+                return;
             }
-        }
 
-        function seleccionarMesa(nombreMesa) {
-            mesaSeleccionada = nombreMesa;
-            renderMesas();
-            renderMesaDetalle();
-        }
-
-        function renderMesaDetalle() {
-            document.getElementById('nombre-mesa-activa').innerText = mesaSeleccionada || "Ninguna";
-            const contenedor = document.getElementById('lista-productos-mesa');
-            contenedor.innerHTML = '';
+            let html = '';
             let total = 0;
 
-            if(!mesaSeleccionada) {
-                contenedor.innerHTML = '<p style="color: #a0aec0; text-align:center;">No hay mesas creadas en esta zona.</p>';
-                document.getElementById('total-precio-mesa').innerText = 0;
+            mesa.items.forEach((it, index) => {
+                const subtotal = it.precio * it.cantidad;
+                total += subtotal;
+                html += `
+                    <div class="item-row">
+                        <div>
+                            <strong>${it.nombre}</strong><br>
+                            <small style="color: var(--text-muted);">$${it.precio.toLocaleString()} COP c/u</small>
+                        </div>
+                        <div class="item-controls">
+                            <button class="btn-qty" onclick="modificarCantidad(${index}, -1)">-</button>
+                            <span>${it.cantidad}</span>
+                            <button class="btn-qty" onclick="modificarCantidad(${index}, 1)">+</button>
+                            <button class="btn-danger" style="padding: 2px 6px; font-size:11px;" onclick="eliminarItem(${index})"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            lista.innerHTML = html;
+            totalLbl.innerText = `$${total.toLocaleString()} COP`;
+        }
+
+        function renderizarQuickProducts() {
+            const grid = document.getElementById('quick-products');
+            grid.innerHTML = '';
+            productos.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-quick-prod';
+                btn.innerText = `${p.nombre}\n$${p.precio.toLocaleString()}`;
+                btn.onclick = () => agregarItemAComanda(p);
+                grid.appendChild(btn);
+            });
+        }
+
+        function agregarItemAComanda(prod) {
+            if (!mesaSeleccionadaId) {
+                alert('Por favor selecciona una mesa primero.');
+                return;
+            }
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            mesa.estado = 'ocupada';
+
+            const existe = mesa.items.find(i => i.id === prod.id);
+            if (existe) {
+                existe.cantidad++;
+            } else {
+                mesa.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 });
+            }
+
+            guardarStorage();
+            renderizarMesas();
+            renderizarComanda();
+        }
+
+        function modificarCantidad(index, delta) {
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            if (!mesa) return;
+
+            mesa.items[index].cantidad += delta;
+            if (mesa.items[index].cantidad <= 0) {
+                mesa.items.splice(index, 1);
+            }
+            if (mesa.items.length === 0) mesa.estado = 'disponible';
+
+            guardarStorage();
+            renderizarMesas();
+            renderizarComanda();
+        }
+
+        function eliminarItem(index) {
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            if (!mesa) return;
+
+            mesa.items.splice(index, 1);
+            if (mesa.items.length === 0) mesa.estado = 'disponible';
+
+            guardarStorage();
+            renderizarMesas();
+            renderizarComanda();
+        }
+
+        /* LIQUIDACIÓN Y PAGO */
+        function abrirModalPago() {
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            if (!mesa || mesa.items.length === 0) {
+                alert('No hay productos en la comanda para facturar.');
                 return;
             }
 
-            const items = consumosMesas[mesaSeleccionada] || [];
-            if(items.length === 0) {
-                contenedor.innerHTML = '<p style="color: #a0aec0; text-align:center;">Mesa sin consumos registrados.</p>';
-            } else {
-                items.forEach((prod, index) => {
-                    const subtotal = prod.cant * prod.precio;
-                    total += subtotal;
-                    contenedor.innerHTML += `
-                        <div class="item-producto">
-                            <div><strong>${prod.nombre}</strong><br><small>$${prod.precio.toLocaleString()} x ${prod.cant} = $${subtotal.toLocaleString()}</small></div>
-                            <div class="actions-item">
-                                <button onclick="modificarCantidad(${index}, 1)">+</button>
-                                <button onclick="modificarCantidad(${index}, -1)">-</button>
-                                <button onclick="eliminarProductoMesa(${index})">🗑️</button>
-                            </div>
-                        </div>`;
-                });
-            }
-            document.getElementById('total-precio-mesa').innerText = total.toLocaleString();
-        }
-
-        function modificarCantidad(index, cambio) {
-            const item = consumosMesas[mesaSeleccionada][index];
-            item.cant += cambio;
-            if(item.cant <= 0) consumosMesas[mesaSeleccionada].splice(index, 1);
-            
-            renderMesas();
-            renderMesaDetalle();
-            guardarEnFirestore();
-        }
-
-        function eliminarProductoMesa(index) {
-            consumosMesas[mesaSeleccionada].splice(index, 1);
-            renderMesas();
-            renderMesaDetalle();
-            guardarEnFirestore();
-        }
-
-        function agregarProductoAMesa() {
-            if(!mesaSeleccionada) return alert("Selecciona o crea una mesa primero.");
-            const select = document.getElementById('select-producto-catalogo');
-            
-            if (!select.value) return alert("No hay ningún producto seleccionado o el catálogo está vacío.");
-            
-            const prod = catalogo.find(p => p.id === parseInt(select.value));
-            if(prod) {
-                if(!consumosMesas[mesaSeleccionada]) consumosMesas[mesaSeleccionada] = [];
-                const existe = consumosMesas[mesaSeleccionada].find(p => p.id === prod.id);
-                if(existe) existe.cant++;
-                else consumosMesas[mesaSeleccionada].push({ ...prod, cant: 1 });
-                
-                renderMesas();
-                renderMesaDetalle();
-                guardarEnFirestore();
-            }
-        }
-
-        // MODAL DE COBRO Y TICKET
-        function abrirModalPago() {
-            if(!mesaSeleccionada) return;
-            const items = consumosMesas[mesaSeleccionada] || [];
-            if(items.length === 0) return alert("La mesa no tiene consumos para cobrar.");
-
-            const total = items.reduce((acc, p) => acc + (p.cant * p.precio), 0);
-            document.getElementById('modal-mesa-nombre').innerText = mesaSeleccionada;
-            document.getElementById('modal-total-cobrar').innerText = total.toLocaleString();
+            const total = mesa.items.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
+            document.getElementById('modal-mesa-nombre').innerText = `${mesa.nombre} (${mesa.zona})`;
+            document.getElementById('modal-monto-total').innerText = `$${total.toLocaleString()} COP`;
             document.getElementById('modal-pago').style.display = 'flex';
         }
 
-        function cerrarModalPago() { document.getElementById('modal-pago').style.display = 'none'; }
-
-        function actualizarInfoMetodoPago() {
-            const metodo = document.getElementById('metodo-pago-select').value;
-            document.getElementById('info-nequi-box').style.display = (metodo === 'NEQUI') ? 'block' : 'none';
+        function cerrarModalPago() {
+            document.getElementById('modal-pago').style.display = 'none';
         }
 
-        function confirmarPago(imprimir = false) {
-            const items = consumosMesas[mesaSeleccionada] || [];
-            const total = items.reduce((acc, p) => acc + (p.cant * p.precio), 0);
-            const metodo = document.getElementById('metodo-pago-select').value;
+        function procesarCobro() {
+            const mesa = mesas.find(m => m.id === mesaSeleccionadaId);
+            const total = mesa.items.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
+            const metodo = document.getElementById('metodo-pago').value;
 
-            if (imprimir) {
-                imprimirFacturaTicket(mesaSeleccionada, items, total, metodo);
-            } else {
-                alert(`¡Pago de $${total.toLocaleString()} COP procesado exitosamente!`);
-            }
+            const venta = {
+                id: 'FACT-' + Math.floor(1000 + Math.random() * 9000),
+                mesa: mesa.nombre,
+                metodo: metodo,
+                total: total,
+                fecha: new Date().toLocaleString()
+            };
 
-            // Liberar la mesa y guardar cambios
-            consumosMesas[mesaSeleccionada] = [];
+            historialVentas.push(venta);
+            mesa.items = [];
+            mesa.estado = 'disponible';
+
+            guardarStorage();
+            renderizarMesas();
+            renderizarComanda();
+            renderizarReportes();
             cerrarModalPago();
-            renderMesas();
-            renderMesaDetalle();
-            guardarEnFirestore();
+
+            alert(`Venta registrada con éxito.\nTicket impreso - Factura: ${venta.id}`);
+            window.print();
         }
 
-        function imprimirFacturaTicket(nombreMesa, items, total, metodoPago) {
-            const fecha = new Date().toLocaleString('es-CO');
-            let filasItems = '';
-
-            items.forEach(item => {
-                const subtotal = item.cant * item.precio;
-                filasItems += `
-                    <tr>
-                        <td style="text-align: left;">${item.nombre} x${item.cant}</td>
-                        <td style="text-align: right;">$${subtotal.toLocaleString()}</td>
-                    </tr>
-                `;
-            });
-
-            const ventanaPrint = window.open('', '_blank', 'width=380,height=600');
-            ventanaPrint.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Ticket - ${nombreMesa}</title>
-                    <style>
-                        body { font-family: 'Courier New', Courier, monospace; width: 280px; margin: 0 auto; padding: 10px; color: #000; font-size: 13px; }
-                        .center { text-align: center; }
-                        .right { text-align: right; }
-                        .linea { border-top: 1px dashed #000; margin: 8px 0; }
-                        table { width: 100%; border-collapse: collapse; }
-                        td { padding: 2px 0; vertical-align: top; }
-                    </style>
-                </head>
-                <body>
-                    <div class="center">
-                        <h2 style="margin: 0; font-size: 16px;">${negocioNombreActual.toUpperCase()}</h2>
-                        <p style="margin: 2px 0;">Recibo de Caja / Comanda</p>
-                        <p style="margin: 2px 0; font-size: 11px;">${fecha}</p>
-                        <p style="margin: 4px 0;"><strong>${nombreMesa}</strong></p>
-                    </div>
-
-                    <div class="linea"></div>
-
-                    <table>
-                        <thead>
-                            <tr style="border-bottom: 1px solid #000;">
-                                <th style="text-align: left;">Cant / Prod</th>
-                                <th style="text-align: right;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filasItems}
-                        </tbody>
-                    </table>
-
-                    <div class="linea"></div>
-
-                    <table>
-                        <tr>
-                            <td><strong>TOTAL:</strong></td>
-                            <td class="right"><strong>$${total.toLocaleString()} COP</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Método de Pago:</td>
-                            <td class="right">${metodoPago}</td>
-                        </tr>
-                    </table>
-
-                    <div class="linea"></div>
-
-                    <div class="center" style="margin-top: 15px;">
-                        <p>¡Gracias por su visita!</p>
-                        <p style="font-size: 10px;">Kingdom Vending POS</p>
-                    </div>
-
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            window.close();
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `);
-            ventanaPrint.document.close();
-        }
-
-        // CATÁLOGO
-        function guardarNuevoProducto(e) {
-            e.preventDefault();
-            const nombre = document.getElementById('prod-nombre').value;
-            const categoria = document.getElementById('prod-categoria').value;
-            const precio = parseFloat(document.getElementById('prod-precio').value);
-
-            catalogo.push({ id: Date.now(), nombre, categoria, precio });
-            renderCatalogo();
-            guardarEnFirestore();
-
-            document.getElementById('prod-nombre').value = '';
-            document.getElementById('prod-precio').value = '';
-            alert(`Producto "${nombre}" guardado.`);
-        }
-
-        function renderCatalogo() {
+        /* CATÁLOGO */
+        function renderizarCatalogo() {
             const tbody = document.getElementById('tabla-catalogo-body');
             tbody.innerHTML = '';
-
-            const selectPOS = document.getElementById('select-producto-catalogo');
-            selectPOS.innerHTML = '';
-
-            if (catalogo.length === 0) {
-                selectPOS.innerHTML = '<option value="">Sin productos en catálogo</option>';
-            }
-
-            catalogo.forEach((prod, index) => {
-                // Actualizar menú desplegable en el panel POS
-                selectPOS.innerHTML += `<option value="${prod.id}">${prod.nombre} - $${prod.precio.toLocaleString()} COP</option>`;
-
-                // Actualizar la tabla de productos
+            productos.forEach((p, idx) => {
                 tbody.innerHTML += `
                     <tr>
-                        <td>${prod.nombre}</td>
-                        <td>${prod.categoria}</td>
-                        <td>$${prod.precio.toLocaleString()} COP</td>
-                        <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
-                            <button onclick="editarPrecioCatalogo(${index})" style="background: #d97706; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: white;" title="Cambiar Precio">✏️</button>
-                            <button onclick="eliminarProductoCatalogo(${index})" style="background: #dc2626; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: white;" title="Eliminar">🗑️</button>
+                        <td><strong>${p.nombre}</strong></td>
+                        <td>${p.categoria}</td>
+                        <td>$${p.precio.toLocaleString()} COP</td>
+                        <td>
+                            <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="eliminarProductoCatalogo(${idx})">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        function editarPrecioCatalogo(index) {
-            const prod = catalogo[index];
-            let nuevoPrecioStr = prompt(`Ingrese el nuevo precio para "${prod.nombre}":`, prod.precio);
-            
-            if (nuevoPrecioStr !== null && nuevoPrecioStr.trim() !== "") {
-                let nuevoPrecio = parseFloat(nuevoPrecioStr);
-                if (!isNaN(nuevoPrecio) && nuevoPrecio >= 0) {
-                    catalogo[index].precio = nuevoPrecio;
-                    renderCatalogo();
-                    guardarEnFirestore();
-                } else {
-                    alert("Por favor ingrese un valor numérico válido.");
-                }
-            }
+        function agregarProductoCatalogo(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('prod-nombre').value;
+            const cat = document.getElementById('prod-categoria').value;
+            const precio = parseInt(document.getElementById('prod-precio').value);
+
+            productos.push({ id: Date.now(), nombre: nombre, categoria: cat, precio: precio });
+            guardarStorage();
+            renderizarCatalogo();
+            renderizarQuickProducts();
+
+            document.getElementById('prod-nombre').value = '';
+            document.getElementById('prod-precio').value = '';
         }
 
-        function eliminarProductoCatalogo(index) {
-            if (confirm("¿Estás seguro de eliminar este producto del catálogo?")) {
-                catalogo.splice(index, 1);
-                renderCatalogo();
-                guardarEnFirestore();
-            }
+        function eliminarProductoCatalogo(idx) {
+            productos.splice(idx, 1);
+            guardarStorage();
+            renderizarCatalogo();
+            renderizarQuickProducts();
         }
 
-        // INICIALIZACIÓN CON CAMPOS VACÍOS
-        renderCatalogo();
-        renderMesas();
-        renderMesaDetalle();
+        /* REPORTES */
+        function renderizarReportes() {
+            const tbody = document.getElementById('tabla-ventas-body');
+            tbody.innerHTML = '';
+            let totalAcumulado = 0;
+
+            historialVentas.forEach(v => {
+                totalAcumulado += v.total;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${v.id}</strong></td>
+                        <td>${v.mesa}</td>
+                        <td>${v.metodo}</td>
+                        <td style="color: var(--accent-green); font-weight: bold;">$${v.total.toLocaleString()} COP</td>
+                        <td>${v.fecha}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('kpi-total-ventas').innerText = `$${totalAcumulado.toLocaleString()} COP`;
+            document.getElementById('kpi-cant-comandas').innerText = historialVentas.length;
+        }
     </script>
 </body>
 </html>
