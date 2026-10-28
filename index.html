@@ -7,11 +7,6 @@
     
     <!-- Iconos de FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- SDK Web de Firebase (v8 Compatibilidad) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
         /* ========================================== */
@@ -57,7 +52,7 @@
         }
 
         /* ========================================== */
-        /* ENCABEZADO Y STATUS BAR                    */
+        /* ENCABEZADO Y BARRA SUPERIOR                */
         /* ========================================== */
         header {
             text-align: center;
@@ -84,11 +79,36 @@
             font-weight: bold;
         }
 
-        .status-badge {
-            background: #2d3748;
+        /* Botón de Registro en Esquina Superior Derecha */
+        .btn-top-register {
+            background: #2e7d32;
+            color: var(--text-white);
+            border: 1px solid var(--accent-green);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-top-register:hover {
+            background: var(--accent-green-hover);
+            transform: translateY(-2px);
+        }
+
+        /* Badge que aparece SOLO cuando la Licencia está Activa */
+        .status-badge-active {
+            background: #1b3820;
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
             padding: 6px 14px;
             border-radius: 20px;
             font-size: 13px;
+            font-weight: bold;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -98,10 +118,6 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background-color: var(--danger-red);
-        }
-
-        .status-indicator.active {
             background-color: var(--accent-green);
             box-shadow: 0 0 8px var(--accent-green);
         }
@@ -152,14 +168,14 @@
         }
 
         /* ========================================== */
-        /* TARJETAS, FORMULARIOS Y CONTENEDORES      */
+        /* TARJETAS Y FORMULARIOS                     */
         /* ========================================== */
         .card-panel {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             padding: 25px;
             border-radius: 10px;
-            max-width: 600px;
+            max-width: 520px;
             margin: 0 auto 30px auto;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
@@ -176,7 +192,7 @@
             font-weight: 500;
         }
 
-        .form-group input, .form-group select, .form-group textarea {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 12px;
             background: var(--bg-input);
@@ -221,10 +237,6 @@
             cursor: pointer;
         }
 
-        .btn-danger:hover {
-            background: #c53030;
-        }
-
         .nequi-licencia-box {
             background: #1d2636;
             border: 2px dashed var(--danger-red);
@@ -240,6 +252,36 @@
             font-weight: bold;
             letter-spacing: 1.5px;
             margin: 8px 0;
+        }
+
+        .auth-links {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .auth-link {
+            color: var(--accent-green);
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .auth-link:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-link {
+            color: var(--warning-orange);
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
         }
 
         /* ========================================== */
@@ -304,31 +346,12 @@
             transform: translateY(-3px);
         }
 
-        .mesa-card.disponible {
-            border-color: var(--accent-green);
-        }
+        .mesa-card.disponible { border-color: var(--accent-green); }
+        .mesa-card.ocupada { border-color: var(--danger-red); background: #2a1b1b; }
+        .mesa-card.seleccionada { border-color: var(--accent-blue); box-shadow: 0 0 12px rgba(49, 130, 206, 0.6); }
 
-        .mesa-card.ocupada {
-            border-color: var(--danger-red);
-            background: #2a1b1b;
-        }
-
-        .mesa-card.seleccionada {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 12px rgba(49, 130, 206, 0.6);
-        }
-
-        .mesa-title {
-            font-weight: bold;
-            font-size: 16px;
-            color: var(--text-white);
-        }
-
-        .mesa-status {
-            font-size: 12px;
-            margin-top: 6px;
-        }
-
+        .mesa-title { font-weight: bold; font-size: 16px; color: var(--text-white); }
+        .mesa-status { font-size: 12px; margin-top: 6px; }
         .mesa-card.disponible .mesa-status { color: var(--accent-green); }
         .mesa-card.ocupada .mesa-status { color: var(--danger-red); }
 
@@ -423,9 +446,7 @@
             margin: 15px 0;
         }
 
-        /* ========================================== */
-        /* TABLAS Y REPORTES                          */
-        /* ========================================== */
+        /* TABLAS Y REPORTES */
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -442,10 +463,7 @@
             font-size: 14px;
         }
 
-        .data-table th {
-            background: var(--bg-card);
-            color: var(--text-white);
-        }
+        .data-table th { background: var(--bg-card); color: var(--text-white); }
 
         .kpi-grid {
             display: grid;
@@ -469,9 +487,7 @@
             margin-top: 5px;
         }
 
-        /* ========================================== */
-        /* MODALES Y FLOTANTES                        */
-        /* ========================================== */
+        /* MODALES */
         .modal {
             display: none;
             position: fixed;
@@ -495,9 +511,7 @@
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
         }
 
-        /* ========================================== */
-        /* PIE DE PÁGINA (FOOTER LLAMATIVO Y COMPLETO)*/
-        /* ========================================== */
+        /* PIE DE PÁGINA */
         footer {
             background-color: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
@@ -534,70 +548,22 @@
             background-color: var(--accent-green);
         }
 
-        .footer-col p {
-            font-size: 13px;
-            line-height: 1.6;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
+        .footer-col p { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin-bottom: 8px; }
+        .footer-links { list-style: none; padding: 0; }
+        .footer-links li { margin-bottom: 10px; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 13px; transition: color 0.3s ease; }
+        .footer-links a:hover { color: var(--accent-green); }
 
-        .footer-links {
-            list-style: none;
-            padding: 0;
-        }
-
-        .footer-links li {
-            margin-bottom: 10px;
-        }
-
-        .footer-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 13px;
-            transition: color 0.3s ease, padding-left 0.3s ease;
-        }
-
-        .footer-links a:hover {
-            color: var(--accent-green);
-            padding-left: 6px;
-        }
-
-        .social-links {
-            display: flex;
-            gap: 12px;
-            margin-top: 15px;
-        }
-
+        .social-links { display: flex; gap: 12px; margin-top: 15px; }
         .social-btn {
-            width: 38px;
-            height: 38px;
-            background-color: var(--border-color);
-            color: var(--text-white);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            font-size: 16px;
-            transition: background-color 0.3s ease, transform 0.3s ease;
+            width: 38px; height: 38px; background-color: var(--border-color); color: var(--text-white);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            text-decoration: none; font-size: 16px; transition: background-color 0.3s ease, transform 0.3s ease;
         }
+        .social-btn:hover { background-color: var(--accent-green); color: var(--text-white); transform: translateY(-3px); }
 
-        .social-btn:hover {
-            background-color: var(--accent-green);
-            color: var(--text-white);
-            transform: translateY(-3px);
-        }
-
-        .footer-bottom {
-            text-align: center;
-            padding-top: 20px;
-            font-size: 12px;
-            color: #718096;
-        }
-
-        .footer-bottom strong {
-            color: #cbd5e0;
-        }
+        .footer-bottom { text-align: center; padding-top: 20px; font-size: 12px; color: #718096; }
+        .footer-bottom strong { color: #cbd5e0; }
     </style>
 </head>
 <body>
@@ -609,9 +575,11 @@
                 <div class="brand-logo">
                     <i class="fas fa-cash-register"></i> Kingdom Vending POS
                 </div>
-                <div class="status-badge">
-                    <div class="status-indicator" id="indicador-licencia"></div>
-                    <span id="texto-licencia">Licencia: Inactiva</span>
+                <!-- Esquina Superior Derecha: Botón Registrarse (o Licencia Activa al entrar) -->
+                <div id="header-top-right">
+                    <button class="btn-top-register" onclick="irARegistro()">
+                        <i class="fas fa-user-plus"></i> Registrarse
+                    </button>
                 </div>
             </div>
             <p style="color: var(--text-muted); font-size: 14px;">
@@ -621,8 +589,8 @@
 
         <!-- Navegación por Pestañas -->
         <div class="nav-tabs">
-            <button class="tab-btn active" id="btn-tab-registro" onclick="cambiarPestaña('registro')">
-                <i class="fas fa-user-plus"></i> Registro y Plan
+            <button class="tab-btn active" id="btn-tab-auth" onclick="cambiarPestaña('auth')">
+                <i class="fas fa-sign-in-alt"></i> <span id="lbl-tab-title">Iniciar Sesión</span>
             </button>
             <button class="tab-btn" id="btn-tab-pos" onclick="cambiarPestaña('pos')">
                 <i class="fas fa-utensils"></i> Mesas y Comandas
@@ -635,14 +603,50 @@
             </button>
         </div>
 
-        <!-- PESTAÑA 1: REGISTRO Y SUSCRIPCIÓN NEQUI -->
-        <div id="tab-registro" class="tab-content active">
-            <div class="card-panel">
+        <!-- PESTAÑA 1: MÓDULO AUTH (INICIAR SESIÓN Y REGISTRO) -->
+        <div id="tab-auth" class="tab-content active">
+            
+            <!-- VISTA 1: INICIAR SESIÓN (CARGA POR DEFECTO) -->
+            <div id="vista-login" class="card-panel">
+                <h2 style="color: #fff; margin-bottom: 18px; font-size: 20px; text-align: center;">
+                    <i class="fas fa-sign-in-alt" style="color: var(--accent-green);"></i> Iniciar Sesión
+                </h2>
+                
+                <form onsubmit="procesarLogin(event)">
+                    <div class="form-group">
+                        <label><i class="fas fa-envelope"></i> Correo Electrónico:</label>
+                        <input type="email" id="login-correo" placeholder="cliente@ejemplo.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-key"></i> Contraseña de Acceso:</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                    </button>
+                </form>
+
+                <div class="auth-links">
+                    <a href="javascript:void(0)" class="forgot-link" onclick="recuperarClave()">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                    <div style="margin-top: 12px;">
+                        <a href="javascript:void(0)" class="auth-link" onclick="irARegistro()">
+                            ¿No tienes cuenta? Regístrate aquí
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 2: REGISTRO DE ESTABLECIMIENTO (SOLO VISIBLE SI DA CLIC EN REGISTRARSE) -->
+            <div id="vista-registro" class="card-panel" style="display: none;">
                 <h2 style="color: #fff; margin-bottom: 18px; font-size: 20px; text-align: center;">
                     <i class="fas fa-id-card" style="color: var(--accent-green);"></i> Registro de Establecimiento
                 </h2>
                 
-                <form id="form-registro" onsubmit="procesarRegistro(event)">
+                <form onsubmit="procesarRegistro(event)">
                     <div class="form-group">
                         <label><i class="fas fa-store"></i> Nombre del Negocio:</label>
                         <input type="text" id="reg-nombre" placeholder="Ej: Kingdom Bar / Vending" required>
@@ -680,7 +684,14 @@
                         <i class="fas fa-check-circle"></i> Confirmar y Activar Licencia
                     </button>
                 </form>
+
+                <div class="auth-links">
+                    <a href="javascript:void(0)" class="auth-link" onclick="irALogin()">
+                        ¿Ya tienes cuenta? Inicia sesión aquí
+                    </a>
+                </div>
             </div>
+
         </div>
 
         <!-- PESTAÑA 2: MÓDULO POS (MESAS Y COMANDAS) -->
@@ -695,9 +706,7 @@
                         <button class="zona-btn" onclick="filtrarZona('CALLE', this)">Zona Calle</button>
                     </div>
 
-                    <div class="mesas-grid" id="contenedor-mesas">
-                        <!-- Generado dinámicamente desde JS -->
-                    </div>
+                    <div class="mesas-grid" id="contenedor-mesas"></div>
                 </div>
 
                 <!-- Sección Derecha: Comanda Actual -->
@@ -718,12 +727,9 @@
                     </div>
 
                     <div>
-                        <!-- Selección rápida del catálogo -->
                         <div class="quick-catalog">
                             <label style="font-size: 12px; color: var(--text-muted);">Agregar rápido al pedido:</label>
-                            <div class="quick-products-grid" id="quick-products">
-                                <!-- Generado desde JS -->
-                            </div>
+                            <div class="quick-products-grid" id="quick-products"></div>
                         </div>
 
                         <div class="total-box">
@@ -778,9 +784,7 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-catalogo-body">
-                            <!-- Filas dinámicas -->
-                        </tbody>
+                        <tbody id="tabla-catalogo-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -799,7 +803,7 @@
                 </div>
                 <div class="kpi-card">
                     <div>Suscripción POS</div>
-                    <div class="kpi-value" id="kpi-estado-plan" style="color: var(--accent-blue);">Inactiva</div>
+                    <div class="kpi-value" id="kpi-estado-plan" style="color: var(--danger-red);">Inactiva</div>
                 </div>
             </div>
 
@@ -814,9 +818,7 @@
                         <th>Fecha y Hora</th>
                     </tr>
                 </thead>
-                <tbody id="tabla-ventas-body">
-                    <!-- Filas dinámicas -->
-                </tbody>
+                <tbody id="tabla-ventas-body"></tbody>
             </table>
         </div>
     </div>
@@ -852,42 +854,30 @@
         </div>
     </div>
 
-    <!-- PIE DE PÁGINA (FOOTER LLAMATIVO Y COMPLETO) -->
+    <!-- PIE DE PÁGINA -->
     <footer>
         <div class="footer-container">
-            <!-- Columna 1: Datos del Proyecto -->
             <div class="footer-col">
                 <h3 style="color: var(--accent-green);"><i class="fas fa-cash-register" style="margin-right: 8px;"></i>Kingdom Vending POS</h3>
                 <p>Plataforma web para gestión integral de restaurantes, bares y puntos de venta. Control de comandas por zonas y facturación ágil.</p>
-                
                 <div class="social-links">
-                    <a href="https://github.com/digitalcris01" target="_blank" class="social-btn" title="GitHub">
-                        <i class="fab fa-github"></i>
-                    </a>
-                    <a href="https://doctor-pcs5.webnode.com.co" target="_blank" class="social-btn" title="Sitio Web Oficial">
-                        <i class="fas fa-globe"></i>
-                    </a>
-                    <a href="mailto:cristian.enciso@sena.edu.co" class="social-btn" title="Correo">
-                        <i class="fas fa-envelope"></i>
-                    </a>
-                    <a href="https://wa.me/573000000000" target="_blank" class="social-btn" title="WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
+                    <a href="https://github.com/digitalcris01" target="_blank" class="social-btn" title="GitHub"><i class="fab fa-github"></i></a>
+                    <a href="https://doctor-pcs5.webnode.com.co" target="_blank" class="social-btn" title="Sitio Web Oficial"><i class="fas fa-globe"></i></a>
+                    <a href="mailto:cristian.enciso@sena.edu.co" class="social-btn" title="Correo"><i class="fas fa-envelope"></i></a>
+                    <a href="https://wa.me/573000000000" target="_blank" class="social-btn" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
                 </div>
             </div>
 
-            <!-- Columna 2: Navegación Rápida -->
             <div class="footer-col">
                 <h4>Navegación Rápida</h4>
                 <ul class="footer-links">
-                    <li><a href="#" onclick="cambiarPestaña('registro')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Registro y Suscripción</a></li>
+                    <li><a href="#" onclick="cambiarPestaña('auth')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Acceso / Registro</a></li>
                     <li><a href="#" onclick="cambiarPestaña('pos')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Mesas y Comandas</a></li>
                     <li><a href="#" onclick="cambiarPestaña('catalogo')"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Catálogo de Productos</a></li>
                     <li><a href="https://github.com/digitalcris01/kingdom-vending-pos" target="_blank"><i class="fas fa-chevron-right" style="font-size: 10px; color: var(--accent-green);"></i> Repositorio GitHub</a></li>
                 </ul>
             </div>
 
-            <!-- Columna 3: Información del Desarrollador / Aprendiz -->
             <div class="footer-col">
                 <h4>Desarrollador</h4>
                 <p><strong>Cristian Danilo Enciso Ahumada</strong></p>
@@ -902,14 +892,12 @@
         </div>
     </footer>
 
-    <!-- LÓGICA JAVASCRIPT COMPLETA DEL APLICATIVO -->
+    <!-- LÓGICA JAVASCRIPT DEL APLICATIVO -->
     <script>
-        // Configuración e Inicialización del Estado
         let suscripcionActiva = false;
         let mesaSeleccionadaId = null;
         let zonaFiltroActual = 'TODAS';
 
-        // Base de datos local simulada (Persistencia en LocalStorage)
         let mesas = JSON.parse(localStorage.getItem('kv_mesas')) || [
             { id: 1, nombre: 'Mesa 1', zona: 'ZONA DE BAR', estado: 'disponible', items: [] },
             { id: 2, nombre: 'Mesa 2', zona: 'ZONA DE BAR', estado: 'disponible', items: [] },
@@ -929,7 +917,6 @@
 
         let historialVentas = JSON.parse(localStorage.getItem('kv_ventas')) || [];
 
-        // Inicializador al cargar el DOM
         document.addEventListener('DOMContentLoaded', () => {
             renderizarMesas();
             renderizarQuickProducts();
@@ -945,20 +932,69 @@
             localStorage.setItem('kv_licencia', suscripcionActiva);
         }
 
+        // MOSTRAR U OCULTAR "LICENCIA ACTIVA" ARRIBA A LA DERECHA
         function verificarEstadoLicencia() {
             const guardada = localStorage.getItem('kv_licencia');
-            if (guardada === 'true') {
-                suscripcionActiva = true;
-                document.getElementById('indicador-licencia').classList.add('active');
-                document.getElementById('texto-licencia').innerText = 'Licencia: ACTIVA';
-                document.getElementById('kpi-estado-plan').innerText = 'Activa';
-                document.getElementById('kpi-estado-plan').style.color = 'var(--accent-green)';
+            const topRight = document.getElementById('header-top-right');
+            const kpiPlan = document.getElementById('kpi-estado-plan');
+
+            if (guardada === 'true' && suscripcionActiva) {
+                // Reemplaza el botón "Registrarse" por el badge verde de Licencia Activa
+                topRight.innerHTML = `
+                    <div class="status-badge-active">
+                        <div class="status-indicator"></div>
+                        <span>Licencia: Activa</span>
+                    </div>
+                `;
+                if (kpiPlan) {
+                    kpiPlan.innerText = 'Activa';
+                    kpiPlan.style.color = 'var(--accent-green)';
+                }
+            } else {
+                // Mantiene el botón de "Registrarse" arriba
+                topRight.innerHTML = `
+                    <button class="btn-top-register" onclick="irARegistro()">
+                        <i class="fas fa-user-plus"></i> Registrarse
+                    </button>
+                `;
+                if (kpiPlan) {
+                    kpiPlan.innerText = 'Inactiva';
+                    kpiPlan.style.color = 'var(--danger-red)';
+                }
             }
         }
 
+        // FUNCIONES PARA CAMBIAR ENTRE VISTA INICIAR SESIÓN Y VISTA REGISTRO
+        function irARegistro() {
+            document.getElementById('vista-login').style.display = 'none';
+            document.getElementById('vista-registro').style.display = 'block';
+            document.getElementById('lbl-tab-title').innerText = 'Registro y Plan';
+            cambiarPestaña('auth');
+        }
+
+        function irALogin() {
+            document.getElementById('vista-registro').style.display = 'none';
+            document.getElementById('vista-login').style.display = 'block';
+            document.getElementById('lbl-tab-title').innerText = 'Iniciar Sesión';
+            cambiarPestaña('auth');
+        }
+
+        function recuperarClave() {
+            const correo = document.getElementById('login-correo').value;
+            if (!correo) {
+                const ingresado = prompt("Por favor, ingresa tu correo electrónico para enviar el enlace de recuperación:");
+                if (ingresado && ingresado.trim() !== "") {
+                    alert(`✅ Se ha enviado un correo a "${ingresado}" para restablecer tu contraseña.`);
+                }
+            } else {
+                alert(`✅ Se ha enviado un correo a "${correo}" para restablecer tu contraseña.`);
+            }
+        }
+
+        // CONTROL DE NAVEGACIÓN
         function cambiarPestaña(tabId) {
             if ((tabId === 'pos' || tabId === 'catalogo' || tabId === 'reportes') && !suscripcionActiva) {
-                alert('Debe activar la suscripción del sistema para acceder a este módulo.');
+                alert('⚠️ Acceso Restringido: Debes Iniciar Sesión o Registrarte para acceder al sistema.');
                 return;
             }
 
@@ -974,12 +1010,23 @@
             document.getElementById('lbl-monto-plan').innerText = val === '100000' ? '$100.000 COP (Anual)' : '$10.000 COP (Mensual)';
         }
 
+        // PROCESAR INICIO DE SESIÓN
+        function procesarLogin(e) {
+            e.preventDefault();
+            suscripcionActiva = true;
+            guardarStorage();
+            verificarEstadoLicencia();
+            alert('¡Bienvenido de nuevo a Kingdom Vending POS!\n\nHas ingresado correctamente al sistema.');
+            cambiarPestaña('pos');
+        }
+
+        // PROCESAR REGISTRO DE ESTABLECIMIENTO
         function procesarRegistro(e) {
             e.preventDefault();
             suscripcionActiva = true;
             guardarStorage();
             verificarEstadoLicencia();
-            alert('¡Cuenta de establecimiento creada y licencia activada exitosamente!');
+            alert('¡Registro de establecimiento y activación de licencia exitosa!\n\nBienvenido a Kingdom Vending POS.');
             cambiarPestaña('pos');
         }
 
